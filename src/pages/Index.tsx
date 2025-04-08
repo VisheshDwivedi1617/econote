@@ -7,12 +7,16 @@ import AIToolbar from "@/components/ai/AIToolbar";
 import PenStatus from "@/components/pen/PenStatus";
 import NoteHeader from "@/components/notes/NoteHeader";
 import WelcomeTutorial from "@/components/onboarding/WelcomeTutorial";
+import TextConversionPanel from "@/components/ocr/TextConversionPanel";
+import ExportPanel from "@/components/export/ExportPanel";
 import { toast } from "@/components/ui/use-toast";
 import { NotebookProvider } from "@/contexts/NotebookContext";
+import { ThemeProvider } from "@/hooks/use-theme";
 
 const Index = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [penData, setPenData] = useState<any>(null);
+  const [showUtilityPanels, setShowUtilityPanels] = useState(false);
   
   useEffect(() => {
     // Show welcome tutorial the first time only
@@ -41,30 +45,48 @@ const Index = () => {
   // Handle pen data from the PenStatus component
   const handlePenData = (data: any) => {
     setPenData(data);
+    
+    // Show utility panels after getting some pen data
+    if (data.type === 'stroke' && !showUtilityPanels) {
+      setShowUtilityPanels(true);
+    }
   };
   
   return (
-    <NotebookProvider>
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Navbar />
-        
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
+    <ThemeProvider>
+      <NotebookProvider>
+        <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+          <Navbar />
           
-          <div className="flex-1 flex flex-col">
-            <NoteHeader />
-            <DigitalCanvas className="flex-1" />
+          <div className="flex flex-1 overflow-hidden">
+            <Sidebar />
+            
+            <div className="flex-1 flex flex-col">
+              <NoteHeader />
+              
+              <div className="flex-1 flex flex-col">
+                <DigitalCanvas className="flex-1" />
+                
+                {/* OCR and Export Panels */}
+                {showUtilityPanels && (
+                  <div className="p-4 space-y-2">
+                    <TextConversionPanel />
+                    <ExportPanel />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+          
+          <PenStatus onPenData={handlePenData} />
+          <AIToolbar />
+          
+          {showWelcome && (
+            <WelcomeTutorial onComplete={handleTutorialComplete} />
+          )}
         </div>
-        
-        <PenStatus onPenData={handlePenData} />
-        <AIToolbar />
-        
-        {showWelcome && (
-          <WelcomeTutorial onComplete={handleTutorialComplete} />
-        )}
-      </div>
-    </NotebookProvider>
+      </NotebookProvider>
+    </ThemeProvider>
   );
 };
 
