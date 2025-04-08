@@ -6,7 +6,7 @@ import {
   ChevronUp, 
   Download, 
   FileImage,
-  FilePdf,
+  File,
   FileText,
   Loader2
 } from "lucide-react";
@@ -93,7 +93,7 @@ const ExportPanel = () => {
       case 'svg':
         return <FileImage className="h-4 w-4 mr-1" />;
       case 'pdf':
-        return <FilePdf className="h-4 w-4 mr-1" />;
+        return <File className="h-4 w-4 mr-1" />;
       case 'docx':
         return <FileText className="h-4 w-4 mr-1" />;
       default:
