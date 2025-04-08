@@ -1,11 +1,15 @@
 
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   FileText, FolderPlus, BookOpen, Tag, Star, 
   Archive, Trash2, PenTool, ChevronRight, ChevronDown 
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/use-toast";
+import { useNotebook } from "@/contexts/NotebookContext";
+import StorageService from "@/services/StorageService";
 
 type SidebarSection = {
   title: string;
@@ -13,13 +17,20 @@ type SidebarSection = {
     name: string;
     icon: JSX.Element;
     active?: boolean;
+    id?: string;
+    path?: string;
   }[];
 };
 
 const Sidebar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  const { notebooks, pages, currentNotebook, createPage } = useNotebook();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     "My Notes": true,
     "Tags": true,
+    "Recent Notes": true,
   });
 
   const toggleSection = (title: string) => {
@@ -29,16 +40,67 @@ const Sidebar = () => {
     }));
   };
 
+  const handleCreateNewNote = async () => {
+    try {
+      const newPage = await createPage("Untitled Note");
+      
+      toast({
+        title: "Note created",
+        description: "New note has been created successfully",
+      });
+      
+      // Navigate to the new note
+      navigate(`/note/${newPage.id}`);
+    } catch (error) {
+      console.error("Error creating note:", error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to create new note",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleNoteClick = (pageId: string) => {
+    navigate(`/note/${pageId}`);
+  };
+  
+  const handleNavigate = (path: string) => {
+    navigate(path);
+  };
+
+  // Get recent notes from pages array (up to 5)
+  const recentNotes = pages.slice(0, 5).map(page => ({
+    name: page.title || "Untitled Note",
+    icon: <FileText className="h-4 w-4" />,
+    id: page.id
+  }));
+
   const sections: SidebarSection[] = [
     {
       title: "My Notes",
       items: [
-        { name: "All Notes", icon: <FileText className="h-4 w-4" />, active: true },
-        { name: "Recent", icon: <BookOpen className="h-4 w-4" /> },
+        { 
+          name: "All Notes", 
+          icon: <FileText className="h-4 w-4" />, 
+          active: location.pathname === "/notes",
+          path: "/notes"
+        },
+        { 
+          name: "Canvas", 
+          icon: <PenTool className="h-4 w-4" />,
+          active: location.pathname === "/",
+          path: "/" 
+        },
         { name: "Starred", icon: <Star className="h-4 w-4" /> },
         { name: "Archive", icon: <Archive className="h-4 w-4" /> },
         { name: "Trash", icon: <Trash2 className="h-4 w-4" /> },
       ],
+    },
+    {
+      title: "Recent Notes",
+      items: recentNotes,
     },
     {
       title: "Tags",
@@ -51,9 +113,12 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="w-64 border-r border-gray-200 h-[calc(100vh-64px)] bg-gray-50 py-4">
+    <div className="w-64 border-r border-gray-200 h-[calc(100vh-64px)] bg-gray-50 py-4 overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
       <div className="px-4 mb-4">
-        <Button className="w-full justify-start gap-2 bg-pen-primary hover:bg-pen-dark">
+        <Button 
+          className="w-full justify-start gap-2 bg-pen-primary hover:bg-pen-dark"
+          onClick={handleCreateNewNote}
+        >
           <PenTool className="h-4 w-4" />
           <span>New Note</span>
         </Button>
@@ -63,7 +128,7 @@ const Sidebar = () => {
         {sections.map((section) => (
           <div key={section.title} className="px-2">
             <button
-              className="flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-600"
+              className="flex items-center justify-between w-full px-2 py-1 text-sm font-medium text-gray-600 dark:text-gray-300"
               onClick={() => toggleSection(section.title)}
             >
               <span>{section.title}</span>
@@ -78,12 +143,19 @@ const Sidebar = () => {
               <div className="mt-1 space-y-1">
                 {section.items.map((item) => (
                   <Button
-                    key={item.name}
+                    key={item.name + (item.id || "")}
                     variant={item.active ? "secondary" : "ghost"}
                     className="w-full justify-start gap-2 text-sm"
+                    onClick={() => {
+                      if (item.id) {
+                        handleNoteClick(item.id);
+                      } else if (item.path) {
+                        handleNavigate(item.path);
+                      }
+                    }}
                   >
                     {item.icon}
-                    <span>{item.name}</span>
+                    <span className="truncate">{item.name}</span>
                   </Button>
                 ))}
                 
