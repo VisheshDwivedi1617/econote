@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Undo, Redo, PenTool, Eraser, Download, 
-  ZoomIn, ZoomOut, Hand, ChevronsExpand, Trash2 
+  ZoomIn, ZoomOut, Hand, Maximize2, Trash2 
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -296,7 +296,7 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
             size="icon"
             title="Fullscreen"
           >
-            <ChevronsExpand className="h-4 w-4" />
+            <Maximize2 className="h-4 w-4" />
           </Button>
           
           <div className="h-4 border-r border-gray-300 mx-1 hidden sm:block" />
