@@ -2,14 +2,16 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
-  Pen, Wifi, BatteryFull, PenTool, Loader2,
-  Bluetooth, BluetoothOff, CalendarRange
+  Pen, BatteryFull, PenTool, Loader2,
+  Bluetooth, BluetoothOff, CalendarRange,
+  Save, Laptop
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import BluetoothService from "@/services/BluetoothService";
 import PenDataInterpreter from "@/services/PenDataInterpreter";
 import CalibrationTool from "@/components/calibration/CalibrationTool";
+import { useNotebook } from "@/contexts/NotebookContext";
 
 interface PenStatusProps {
   className?: string;
@@ -22,7 +24,9 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
   const [batteryLevel, setBatteryLevel] = useState(85);
   const [penName, setPenName] = useState("Smart Pen");
   const [showCalibration, setShowCalibration] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const { toast } = useToast();
+  const { addStroke } = useNotebook();
 
   useEffect(() => {
     // Set up event handlers for Bluetooth service
@@ -62,6 +66,10 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
     
     // Set up handlers for the interpreter
     PenDataInterpreter.setOnNewStroke((stroke) => {
+      // Add to notebook context
+      addStroke(stroke);
+      
+      // Also call the original handler if provided
       if (onPenData) {
         onPenData({
           type: 'stroke',
@@ -77,7 +85,7 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
       BluetoothService.onDataReceived = null;
       PenDataInterpreter.setOnNewStroke(null);
     };
-  }, [onPenData, penName, toast]);
+  }, [onPenData, penName, toast, addStroke]);
   
   // Handle connect/disconnect
   const handleConnect = async () => {
@@ -137,7 +145,7 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
   
   // Open calibration
   const handleCalibrate = () => {
-    if (!connected) {
+    if (!connected && !isOfflineMode) {
       toast({
         title: "Pen Not Connected",
         description: "Please connect your pen before calibrating",
@@ -147,6 +155,23 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
     }
     
     setShowCalibration(true);
+  };
+  
+  // Toggle offline mode
+  const toggleOfflineMode = () => {
+    setIsOfflineMode(prev => !prev);
+    
+    if (!isOfflineMode) {
+      toast({
+        title: "Offline Mode Enabled",
+        description: "You can now use the app without a pen connection.",
+      });
+    } else {
+      toast({
+        title: "Offline Mode Disabled",
+        description: "Connect your pen to continue.",
+      });
+    }
   };
   
   // For demo purposes - simulate connection
@@ -186,14 +211,16 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
       )}>
         <div className={cn(
           "w-3 h-3 rounded-full transition-colors",
-          connected ? "bg-green-500" : "bg-gray-300"
+          connected ? "bg-green-500" : isOfflineMode ? "bg-yellow-500" : "bg-gray-300"
         )} />
         
         <div className="text-sm">
-          <div className="font-medium">{penName}</div>
+          <div className="font-medium">{isOfflineMode ? "Offline Mode" : penName}</div>
           <div className="text-xs text-gray-500">
             {connected 
               ? `Connected • ${Math.round(batteryLevel)}% battery` 
+              : isOfflineMode
+              ? "Using local storage"
               : "Disconnected"}
           </div>
         </div>
@@ -207,13 +234,14 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
         
         <div className="flex items-center gap-2">
           <Button
-            variant={connected ? "outline" : "default"}
+            variant={connected || isOfflineMode ? "outline" : "default"}
             size="sm"
             className={cn(
               connecting && "opacity-80"
             )}
             disabled={connecting}
-            onClick={handleConnect}
+            onClick={isOfflineMode ? toggleOfflineMode : handleConnect}
+            title={isOfflineMode ? "Disable Offline Mode" : connected ? "Disconnect Pen" : "Connect Pen"}
           >
             {connecting ? (
               <>
@@ -225,6 +253,11 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
                 <BluetoothOff className="h-4 w-4 mr-1" />
                 <span>Disconnect</span>
               </>
+            ) : isOfflineMode ? (
+              <>
+                <Bluetooth className="h-4 w-4 mr-1" />
+                <span>Go Online</span>
+              </>
             ) : (
               <>
                 <Bluetooth className="h-4 w-4 mr-1" />
@@ -233,19 +266,41 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
             )}
           </Button>
           
-          {connected && (
+          {!isOfflineMode && !connected && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleCalibrate}
-              title="Calibrate Pen"
+              onClick={toggleOfflineMode}
+              title="Enable Offline Mode"
             >
-              <CalendarRange className="h-4 w-4" />
+              <Laptop className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Offline Mode</span>
             </Button>
           )}
           
+          {(connected || isOfflineMode) && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCalibrate}
+                title="Calibrate Pen"
+              >
+                <CalendarRange className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                title="Sync Notes"
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          
           {/* For demo purposes only */}
-          {!connected && !connecting && (
+          {!connected && !connecting && !isOfflineMode && (
             <Button
               variant="outline"
               size="sm"

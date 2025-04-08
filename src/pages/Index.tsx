@@ -8,6 +8,7 @@ import PenStatus from "@/components/pen/PenStatus";
 import NoteHeader from "@/components/notes/NoteHeader";
 import WelcomeTutorial from "@/components/onboarding/WelcomeTutorial";
 import { toast } from "@/components/ui/use-toast";
+import { NotebookProvider } from "@/contexts/NotebookContext";
 
 const Index = () => {
   const [showWelcome, setShowWelcome] = useState(false);
@@ -43,25 +44,27 @@ const Index = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
-      
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+    <NotebookProvider>
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar />
         
-        <div className="flex-1 flex flex-col">
-          <NoteHeader />
-          <DigitalCanvas className="flex-1" />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          
+          <div className="flex-1 flex flex-col">
+            <NoteHeader />
+            <DigitalCanvas className="flex-1" />
+          </div>
         </div>
+        
+        <PenStatus onPenData={handlePenData} />
+        <AIToolbar />
+        
+        {showWelcome && (
+          <WelcomeTutorial onComplete={handleTutorialComplete} />
+        )}
       </div>
-      
-      <PenStatus onPenData={handlePenData} />
-      <AIToolbar />
-      
-      {showWelcome && (
-        <WelcomeTutorial onComplete={handleTutorialComplete} />
-      )}
-    </div>
+    </NotebookProvider>
   );
 };
 

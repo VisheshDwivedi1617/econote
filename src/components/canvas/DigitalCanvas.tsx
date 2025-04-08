@@ -3,11 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Undo, Redo, PenTool, Eraser, Download, 
-  ZoomIn, ZoomOut, Hand, Maximize2, Trash2 
+  ZoomIn, ZoomOut, Hand, Maximize2, Trash2,
+  ChevronLeft, ChevronRight, Save
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import PenDataInterpreter, { PenStroke } from "@/services/PenDataInterpreter";
+import { useNotebook } from "@/contexts/NotebookContext";
 
 interface DigitalCanvasProps {
   className?: string;
@@ -23,45 +25,23 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
   const [scale, setScale] = useState(1);
   const { toast } = useToast();
   
-  // Strokes history for undo/redo
-  const [strokes, setStrokes] = useState<PenStroke[]>([]);
+  // Get notebook context
+  const { 
+    strokes, 
+    addStroke, 
+    updateStrokes, 
+    goToNextPage, 
+    goToPreviousPage,
+    getCurrentPageIndex,
+    getTotalPages,
+    currentPage,
+    clearStrokes
+  } = useNotebook();
+  
+  // Strokes for undo/redo
   const [redoStack, setRedoStack] = useState<PenStroke[]>([]);
   
-  // Simulated data for demonstration of pen input
-  const simulateRealTimeInput = () => {
-    if (!canvasRef.current) return;
-    
-    const ctx = canvasRef.current.getContext("2d");
-    if (!ctx) return;
-    
-    let x = Math.random() * canvasRef.current.width;
-    let y = Math.random() * canvasRef.current.height;
-    
-    const simulateStroke = () => {
-      if (!canvasRef.current || !ctx) return;
-      
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      
-      // Simulate a natural writing flow with slight randomness
-      for (let i = 0; i < 10; i++) {
-        x += (Math.random() - 0.5) * 20;
-        y += (Math.random() - 0.5) * 5;
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-    };
-    
-    // Simulate writing for demonstration
-    const interval = setInterval(simulateStroke, 100);
-    setTimeout(() => clearInterval(interval), 2000);
-  };
-  
+  // Set up canvas and draw existing strokes
   useEffect(() => {
     if (!canvasRef.current) return;
     
@@ -84,29 +64,13 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
     
-    // Initialize with some sample handwriting
-    const init = () => {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Add a line to show the paper baseline
-      ctx.strokeStyle = "#e5e7eb";
-      ctx.lineWidth = 1;
-      
-      for (let y = 40; y < canvas.height; y += 40) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-    };
-    
-    init();
+    // Draw initial canvas
+    redrawCanvas();
     
     // Set up pen data interpreter handlers
     PenDataInterpreter.setOnNewStroke((stroke) => {
-      // Add the stroke to our state
-      setStrokes(prev => [...prev, stroke]);
+      // Add the stroke to our state via the context
+      addStroke(stroke);
       
       // Draw the stroke
       drawStroke(stroke);
@@ -116,7 +80,18 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
       window.removeEventListener("resize", resizeCanvas);
       PenDataInterpreter.setOnNewStroke(null);
     };
-  }, []);
+  }, [addStroke]);
+  
+  // Redraw when strokes change
+  useEffect(() => {
+    redrawCanvas();
+  }, [strokes]);
+  
+  // Redraw canvas when page changes
+  useEffect(() => {
+    redrawCanvas();
+    setRedoStack([]);
+  }, [currentPage]);
   
   // Redraw all strokes
   const redrawCanvas = () => {
@@ -192,7 +167,8 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
       id: Date.now().toString()
     };
     
-    setStrokes(prev => [...prev, newStroke]);
+    // Add to strokes
+    addStroke(newStroke);
     setRedoStack([]); // Clear redo stack on new drawing
     
     setIsDrawing(true);
@@ -217,18 +193,15 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     ctx.stroke();
     
     // Update the current stroke
-    setStrokes(prev => {
-      const updated = [...prev];
-      const currentStroke = updated[updated.length - 1];
-      
-      if (currentStroke) {
-        currentStroke.points.push({ 
-          x, y, pressure: 1, timestamp: Date.now() 
-        });
-      }
-      
-      return updated;
-    });
+    const updatedStrokes = [...strokes];
+    const currentStroke = updatedStrokes[updatedStrokes.length - 1];
+    
+    if (currentStroke) {
+      currentStroke.points.push({ 
+        x, y, pressure: 1, timestamp: Date.now() 
+      });
+      updateStrokes(updatedStrokes);
+    }
   };
   
   const stopDrawing = () => {
@@ -240,7 +213,8 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     if (strokes.length === 0) return;
     
     const lastStroke = strokes[strokes.length - 1];
-    setStrokes(prev => prev.slice(0, -1));
+    const newStrokes = strokes.slice(0, -1);
+    updateStrokes(newStrokes);
     setRedoStack(prev => [...prev, lastStroke]);
     
     redrawCanvas();
@@ -252,7 +226,7 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     
     const strokeToRedo = redoStack[redoStack.length - 1];
     setRedoStack(prev => prev.slice(0, -1));
-    setStrokes(prev => [...prev, strokeToRedo]);
+    updateStrokes([...strokes, strokeToRedo]);
     
     redrawCanvas();
   };
@@ -273,29 +247,8 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
   const handleClear = () => {
     if (!canvasRef.current) return;
     
-    const ctx = canvasRef.current.getContext("2d");
-    if (!ctx) return;
-    
-    // Save current strokes for potential undo
-    setRedoStack([]);
-    
-    // Clear strokes
-    setStrokes([]);
-    
-    // Clear canvas
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-    
-    // Redraw grid
-    ctx.strokeStyle = "#e5e7eb";
-    ctx.lineWidth = 1;
-    
-    for (let y = 40; y < canvasRef.current.height; y += 40) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvasRef.current.width, y);
-      ctx.stroke();
-    }
+    clearStrokes();
+    redrawCanvas();
     
     toast({
       title: "Canvas cleared",
@@ -318,13 +271,68 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     });
   };
   
-  // Handle pen data from external source
-  const handlePenData = (data: any) => {
-    if (data.type === 'stroke') {
-      const stroke = data.data as PenStroke;
-      setStrokes(prev => [...prev, stroke]);
-      drawStroke(stroke);
-    }
+  // Handle page navigation
+  const handleNextPage = () => {
+    goToNextPage();
+  };
+  
+  const handlePreviousPage = () => {
+    goToPreviousPage();
+  };
+  
+  // Get current page info
+  const currentPageIndex = getCurrentPageIndex() + 1; // 1-based for display
+  const totalPages = getTotalPages();
+  
+  // Simulate pen data (for demonstration)
+  const simulateRealTimeInput = () => {
+    if (!canvasRef.current) return;
+    
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    
+    let x = Math.random() * canvasRef.current.width;
+    let y = Math.random() * canvasRef.current.height;
+    
+    const simulateStroke = () => {
+      if (!canvasRef.current || !ctx) return;
+      
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      
+      // Create new stroke
+      const newStroke: PenStroke = {
+        points: [{ x, y, pressure: 1, timestamp: Date.now() }],
+        color,
+        width: lineWidth,
+        id: Date.now().toString()
+      };
+      
+      // Simulate a natural writing flow with slight randomness
+      for (let i = 0; i < 10; i++) {
+        x += (Math.random() - 0.5) * 20;
+        y += (Math.random() - 0.5) * 5;
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        
+        // Add point to stroke
+        newStroke.points.push({ 
+          x, y, pressure: 1, timestamp: Date.now() 
+        });
+      }
+      
+      // Add the stroke to our state
+      addStroke(newStroke);
+    };
+    
+    // Simulate writing for demonstration
+    const interval = setInterval(simulateStroke, 100);
+    setTimeout(() => clearInterval(interval), 2000);
   };
   
   return (
@@ -400,6 +408,31 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
         </div>
         
         <div className="flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handlePreviousPage}
+            disabled={currentPageIndex <= 1}
+            title="Previous Page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <span className="text-xs font-medium">
+            Page {currentPageIndex} of {totalPages}
+          </span>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleNextPage}
+            title="Next Page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          
+          <div className="h-4 border-r border-gray-300 mx-1" />
+          
           <Button
             variant="ghost"
             size="icon"

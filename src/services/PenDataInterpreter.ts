@@ -173,6 +173,16 @@ class PenDataInterpreter {
     return { ...this.calibration };
   }
   
+  // Create a complete stroke with given color and width
+  createStrokeWithStyle(points: PenPoint[], color: string, width: number): PenStroke {
+    return {
+      points,
+      color,
+      width,
+      id: this.generateStrokeId()
+    };
+  }
+  
   // Set event handlers
   setOnNewPoint(callback: (point: PenPoint) => void): void {
     this.onNewPoint = callback;
