@@ -11,6 +11,7 @@ import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const [showWelcome, setShowWelcome] = useState(false);
+  const [penData, setPenData] = useState<any>(null);
   
   useEffect(() => {
     // Show welcome tutorial the first time only
@@ -36,6 +37,11 @@ const Index = () => {
     });
   };
   
+  // Handle pen data from the PenStatus component
+  const handlePenData = (data: any) => {
+    setPenData(data);
+  };
+  
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
@@ -49,7 +55,7 @@ const Index = () => {
         </div>
       </div>
       
-      <PenStatus />
+      <PenStatus onPenData={handlePenData} />
       <AIToolbar />
       
       {showWelcome && (

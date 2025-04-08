@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import PenDataInterpreter, { PenStroke } from "@/services/PenDataInterpreter";
 
 interface DigitalCanvasProps {
   className?: string;
@@ -21,6 +22,10 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
   const [lineWidth, setLineWidth] = useState(2);
   const [scale, setScale] = useState(1);
   const { toast } = useToast();
+  
+  // Strokes history for undo/redo
+  const [strokes, setStrokes] = useState<PenStroke[]>([]);
+  const [redoStack, setRedoStack] = useState<PenStroke[]>([]);
   
   // Simulated data for demonstration of pen input
   const simulateRealTimeInput = () => {
@@ -72,8 +77,8 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
       
-      // Redraw content after resize if needed
-      // ...
+      // Redraw all strokes after resize
+      redrawCanvas();
     };
     
     resizeCanvas();
@@ -98,13 +103,75 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     
     init();
     
+    // Set up pen data interpreter handlers
+    PenDataInterpreter.setOnNewStroke((stroke) => {
+      // Add the stroke to our state
+      setStrokes(prev => [...prev, stroke]);
+      
+      // Draw the stroke
+      drawStroke(stroke);
+    });
+    
     return () => {
       window.removeEventListener("resize", resizeCanvas);
+      PenDataInterpreter.setOnNewStroke(null);
     };
   }, []);
   
+  // Redraw all strokes
+  const redrawCanvas = () => {
+    if (!canvasRef.current) return;
+    
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    
+    // Clear canvas
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    
+    // Draw grid lines
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 1;
+    
+    for (let y = 40; y < canvasRef.current.height; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvasRef.current.width, y);
+      ctx.stroke();
+    }
+    
+    // Draw all strokes
+    strokes.forEach(stroke => {
+      drawStroke(stroke);
+    });
+  };
+  
+  // Draw a single stroke
+  const drawStroke = (stroke: PenStroke) => {
+    if (!canvasRef.current || stroke.points.length === 0) return;
+    
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.width;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    }
+    
+    ctx.stroke();
+  };
+  
   // Drawing event handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool === "hand") return; // Don't draw if in pan mode
+    
     if (!canvasRef.current) return;
     
     const ctx = canvasRef.current.getContext("2d");
@@ -117,11 +184,22 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     ctx.beginPath();
     ctx.moveTo(x, y);
     
+    // Start a new stroke
+    const newStroke: PenStroke = {
+      points: [{ x, y, pressure: 1, timestamp: Date.now() }],
+      color: isErasing ? "#ffffff" : color,
+      width: isErasing ? lineWidth * 3 : lineWidth,
+      id: Date.now().toString()
+    };
+    
+    setStrokes(prev => [...prev, newStroke]);
+    setRedoStack([]); // Clear redo stack on new drawing
+    
     setIsDrawing(true);
   };
   
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !canvasRef.current) return;
+    if (!isDrawing || tool === "hand" || !canvasRef.current) return;
     
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
@@ -137,10 +215,46 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     
     ctx.lineTo(x, y);
     ctx.stroke();
+    
+    // Update the current stroke
+    setStrokes(prev => {
+      const updated = [...prev];
+      const currentStroke = updated[updated.length - 1];
+      
+      if (currentStroke) {
+        currentStroke.points.push({ 
+          x, y, pressure: 1, timestamp: Date.now() 
+        });
+      }
+      
+      return updated;
+    });
   };
   
   const stopDrawing = () => {
     setIsDrawing(false);
+  };
+  
+  // Undo last stroke
+  const handleUndo = () => {
+    if (strokes.length === 0) return;
+    
+    const lastStroke = strokes[strokes.length - 1];
+    setStrokes(prev => prev.slice(0, -1));
+    setRedoStack(prev => [...prev, lastStroke]);
+    
+    redrawCanvas();
+  };
+  
+  // Redo last undone stroke
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    
+    const strokeToRedo = redoStack[redoStack.length - 1];
+    setRedoStack(prev => prev.slice(0, -1));
+    setStrokes(prev => [...prev, strokeToRedo]);
+    
+    redrawCanvas();
   };
   
   const handleZoomIn = () => {
@@ -162,8 +276,26 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
     
+    // Save current strokes for potential undo
+    setRedoStack([]);
+    
+    // Clear strokes
+    setStrokes([]);
+    
+    // Clear canvas
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    
+    // Redraw grid
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 1;
+    
+    for (let y = 40; y < canvasRef.current.height; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvasRef.current.width, y);
+      ctx.stroke();
+    }
     
     toast({
       title: "Canvas cleared",
@@ -184,6 +316,15 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
       title: "Note saved",
       description: "Your note has been saved to your device",
     });
+  };
+  
+  // Handle pen data from external source
+  const handlePenData = (data: any) => {
+    if (data.type === 'stroke') {
+      const stroke = data.data as PenStroke;
+      setStrokes(prev => [...prev, stroke]);
+      drawStroke(stroke);
+    }
   };
   
   return (
@@ -221,6 +362,8 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
             variant="ghost"
             size="icon"
             title="Undo"
+            onClick={handleUndo}
+            disabled={strokes.length === 0}
           >
             <Undo className="h-4 w-4" />
           </Button>
@@ -228,6 +371,8 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
             variant="ghost"
             size="icon"
             title="Redo"
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
           >
             <Redo className="h-4 w-4" />
           </Button>
