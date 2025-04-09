@@ -26,7 +26,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { notebooks, pages, currentNotebook, createPage } = useNotebook();
+  const { notebooks, currentNotebook, createPage } = useNotebook();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     "My Notes": true,
     "Tags": true,
@@ -70,12 +70,13 @@ const Sidebar = () => {
     navigate(path);
   };
 
-  // Get recent notes from pages array (up to 5)
-  const recentNotes = pages.slice(0, 5).map(page => ({
-    name: page.title || "Untitled Note",
-    icon: <FileText className="h-4 w-4" />,
-    id: page.id
-  }));
+  // Get recent notes from the current notebook
+  const recentNotes = currentNotebook?.pages ? 
+    currentNotebook.pages.slice(0, 5).map(pageId => ({
+      name: pageId,
+      icon: <FileText className="h-4 w-4" />,
+      id: pageId
+    })) : [];
 
   const sections: SidebarSection[] = [
     {
