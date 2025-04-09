@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useNotebook } from "@/contexts/NotebookContext";
-import { ThemeProvider } from "@/hooks/use-theme";
+import { OCRLanguage } from "@/services/OCRService";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -60,15 +60,16 @@ const Index = () => {
   };
   
   // Handle captured image from camera
-  const handleCapturedImage = async (imageDataUrl: string) => {
+  const handleCapturedImage = async (imageDataUrl: string, language?: OCRLanguage) => {
     try {
       // Create a new page from the scanned image
-      const newPage = await createScannedPage(imageDataUrl);
+      const title = `Scanned Note ${new Date().toLocaleDateString()}`;
+      const newPage = await createScannedPage(imageDataUrl, title);
       
       // Show success message
       toast({
         title: "Note Scanned",
-        description: "Your scanned note has been added successfully",
+        description: "Your scanned note has been added successfully. OCR processing in background.",
       });
       
       // Navigate to the new note

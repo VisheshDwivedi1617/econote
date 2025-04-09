@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import StorageService, { NotePage, Notebook } from '@/services/StorageService';
 import { PenStroke } from '@/services/PenDataInterpreter';
 import { useToast } from '@/components/ui/use-toast';
+import OCRService, { OCRLanguage } from '@/services/OCRService';
 
 interface NotebookContextType {
   notebooks: Notebook[];
@@ -34,8 +35,12 @@ interface NotebookContextType {
   getCurrentPageIndex: () => number;
   getTotalPages: () => number;
   
-  // Create a new page from a scanned image
+  // Scanned notes operations
   createScannedPage: (imageData: string, title?: string) => Promise<NotePage>;
+  
+  // OCR operations
+  performOCR: (pageId: string, language?: OCRLanguage) => Promise<string>;
+  updateOCRText: (pageId: string, text: string, language: OCRLanguage) => Promise<void>;
 }
 
 const NotebookContext = createContext<NotebookContextType | undefined>(undefined);
@@ -279,9 +284,67 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
         await StorageService.saveNotebook(updatedNotebook);
       }
       
+      // Perform OCR in the background
+      performOCR(newPage.id).catch(error => {
+        console.error("Background OCR failed:", error);
+      });
+      
       return newPage;
     } catch (error) {
       console.error("Error creating scanned page:", error);
+      throw error;
+    }
+  };
+  
+  const performOCR = async (pageId: string, language: OCRLanguage = 'eng'): Promise<string> => {
+    try {
+      const page = await StorageService.getPage(pageId);
+      
+      if (!page || !page.imageData || !page.isScanned) {
+        throw new Error("Invalid page or not a scanned page");
+      }
+      
+      // Process the image with OCR
+      const ocrText = await OCRService.recognizeText(page.imageData, language);
+      
+      // Save the OCR text back to the page
+      const updatedPage = await StorageService.updateOCRText(pageId, ocrText, language);
+      
+      if (currentPage?.id === pageId) {
+        setCurrentPage(updatedPage);
+      }
+      
+      return ocrText;
+    } catch (error) {
+      console.error("OCR processing error:", error);
+      toast({
+        title: "OCR Failed",
+        description: "Could not process text from the image",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+  
+  const updateOCRText = async (pageId: string, text: string, language: OCRLanguage): Promise<void> => {
+    try {
+      const updatedPage = await StorageService.updateOCRText(pageId, text, language);
+      
+      if (currentPage?.id === pageId && updatedPage) {
+        setCurrentPage(updatedPage);
+      }
+      
+      toast({
+        title: "Text Updated",
+        description: "OCR text has been updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating OCR text:", error);
+      toast({
+        title: "Update Failed",
+        description: "Could not update the OCR text",
+        variant: "destructive",
+      });
       throw error;
     }
   };
@@ -345,7 +408,9 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     goToPage,
     getCurrentPageIndex,
     getTotalPages,
-    createScannedPage
+    createScannedPage,
+    performOCR,
+    updateOCRText
   };
   
   return (

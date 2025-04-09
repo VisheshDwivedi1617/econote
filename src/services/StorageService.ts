@@ -1,3 +1,4 @@
+
 // StorageService.ts - Handles local storage of pen strokes and notes
 
 import { PenStroke } from './PenDataInterpreter';
@@ -10,6 +11,8 @@ export interface NotePage {
   updatedAt: number;
   imageData?: string; // Add this field for scanned notes
   isScanned?: boolean; // Flag to identify scanned notes
+  ocrText?: string; // Store OCR text for scanned notes
+  ocrLanguage?: string; // Store the language used for OCR
 }
 
 export interface Notebook {
@@ -173,7 +176,7 @@ class StorageService {
   }
   
   // Add a new method to create a page from a scanned image
-  async createScannedPage(imageData: string, title: string = "Scanned Note"): Promise<NotePage> {
+  async createScannedPage(imageData: string, title: string = "Scanned Note", ocrText?: string, ocrLanguage?: string): Promise<NotePage> {
     const page: NotePage = {
       id: Date.now().toString(),
       title: title,
@@ -181,7 +184,9 @@ class StorageService {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       imageData: imageData,
-      isScanned: true
+      isScanned: true,
+      ocrText: ocrText,
+      ocrLanguage: ocrLanguage
     };
     
     await this.savePage(page);
@@ -198,6 +203,22 @@ class StorageService {
     }
     
     return page;
+  }
+  
+  // Update OCR text for a page
+  async updateOCRText(pageId: string, ocrText: string, ocrLanguage: string): Promise<NotePage | null> {
+    const page = await this.getPage(pageId);
+    if (!page) return null;
+    
+    const updatedPage = {
+      ...page,
+      ocrText,
+      ocrLanguage,
+      updatedAt: Date.now()
+    };
+    
+    await this.savePage(updatedPage);
+    return updatedPage;
   }
 }
 

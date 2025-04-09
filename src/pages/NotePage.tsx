@@ -131,11 +131,15 @@ const NotePage = () => {
               <p>Loading...</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-auto">
               {isScannedNote ? (
-                // Display scanned note image
-                <div className="h-full p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
-                  <ScannedNoteView imageData={currentPage.imageData!} className="max-w-3xl mx-auto" />
+                // Display scanned note image with OCR capabilities
+                <div className="p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
+                  <ScannedNoteView 
+                    imageData={currentPage.imageData!} 
+                    pageId={currentPage.id}
+                    className="max-w-3xl mx-auto" 
+                  />
                 </div>
               ) : (
                 // Display digital canvas for regular notes

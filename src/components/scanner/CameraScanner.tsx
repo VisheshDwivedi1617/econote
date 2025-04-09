@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, X, CheckCircle, RefreshCw } from "lucide-react";
@@ -6,11 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/components/ui/use-toast";
 import { useNotebook } from "@/contexts/NotebookContext";
 import { detectEdges, enhanceImage } from "@/services/ImageProcessingService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import OCRService, { OCRLanguage } from "@/services/OCRService";
 
 interface CameraScannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCapture: (imageDataUrl: string) => void;
+  onCapture: (imageDataUrl: string, language?: OCRLanguage) => void;
 }
 
 const CameraScanner: React.FC<CameraScannerProps> = ({ 
@@ -24,14 +25,15 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [language, setLanguage] = useState<OCRLanguage>('eng');
   const { toast } = useToast();
   
-  // Initialize camera when the dialog opens
+  const languages = OCRService.getSupportedLanguages();
+  
   useEffect(() => {
     if (open) {
       initializeCamera();
     } else {
-      // Stop camera when dialog closes
       stopCamera();
     }
     
@@ -54,7 +56,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
       
       const constraints = {
         video: {
-          facingMode: "environment", // Use the back camera if available
+          facingMode: "environment",
           width: { ideal: 1920 },
           height: { ideal: 1080 }
         }
@@ -120,22 +122,18 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     try {
       setIsProcessing(true);
       
-      // Process the image (edge detection and enhancement)
       const processedImageDataUrl = await processImage(capturedImage);
       
-      // Call the parent component's onCapture callback with the processed image
-      onCapture(processedImageDataUrl);
+      onCapture(processedImageDataUrl, language);
       
-      // Close the dialog
       onOpenChange(false);
       
-      // Reset state
       setCapturedImage(null);
       setIsProcessing(false);
       
       toast({
         title: "Success",
-        description: "Note scanned and saved successfully",
+        description: "Note scanned and saved. OCR is processing in the background.",
       });
     } catch (error) {
       console.error("Error processing image:", error);
@@ -148,10 +146,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     }
   };
   
-  // Process the captured image
   const processImage = async (imageDataUrl: string): Promise<string> => {
     try {
-      // Create an image element for processing
       const img = new Image();
       img.src = imageDataUrl;
       
@@ -159,7 +155,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         img.onload = resolve;
       });
       
-      // Detect edges to find the document boundaries
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error("Failed to get canvas context");
@@ -168,10 +163,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0, img.width, img.height);
       
-      // Use our image processing service (we'll create this next)
       const cropRect = await detectEdges(canvas);
       
-      // Crop the image to the document boundaries
       const croppedCanvas = document.createElement('canvas');
       const croppedCtx = croppedCanvas.getContext('2d');
       if (!croppedCtx) throw new Error("Failed to get canvas context");
@@ -185,13 +178,11 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         0, 0, cropRect.width, cropRect.height
       );
       
-      // Enhance the image contrast for better readability
       const enhancedImageDataUrl = await enhanceImage(croppedCanvas);
       
       return enhancedImageDataUrl;
     } catch (error) {
       console.error("Error in image processing:", error);
-      // If processing fails, return the original image as a fallback
       return imageDataUrl;
     }
   };
@@ -250,23 +241,43 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
                     className="w-full rounded-md border border-gray-300"
                   />
                   
-                  <div className="mt-4 flex justify-center space-x-4">
-                    <Button 
-                      onClick={retakePhoto} 
-                      variant="outline"
-                      disabled={isProcessing}
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Retake
-                    </Button>
-                    <Button 
-                      onClick={saveImage} 
-                      disabled={isProcessing}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Save Note
-                    </Button>
+                  <div className="mt-4">
+                    <div className="flex flex-col gap-3">
+                      <Select 
+                        value={language}
+                        onValueChange={(val) => setLanguage(val as OCRLanguage)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="OCR Language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages.map(lang => (
+                            <SelectItem key={lang.id} value={lang.id}>
+                              {lang.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <div className="flex justify-center space-x-4">
+                        <Button 
+                          onClick={retakePhoto} 
+                          variant="outline"
+                          disabled={isProcessing}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Retake
+                        </Button>
+                        <Button 
+                          onClick={saveImage} 
+                          disabled={isProcessing}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Save Note
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -274,7 +285,6 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
           )}
         </div>
         
-        {/* Hidden canvas for capturing */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
       </DialogContent>
     </Dialog>
