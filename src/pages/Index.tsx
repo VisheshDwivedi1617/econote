@@ -14,7 +14,7 @@ import CameraScanner from "@/components/scanner/CameraScanner";
 import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { NotebookProvider, useNotebook } from "@/contexts/NotebookContext";
+import { useNotebook } from "@/contexts/NotebookContext";
 import { ThemeProvider } from "@/hooks/use-theme";
 
 const Index = () => {

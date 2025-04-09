@@ -9,7 +9,7 @@ interface ScannedNoteViewProps {
 
 const ScannedNoteView: React.FC<ScannedNoteViewProps> = ({ imageData, className }) => {
   return (
-    <Card className={`overflow-hidden ${className}`}>
+    <Card className={`overflow-hidden ${className || ""}`}>
       <CardContent className="p-0">
         <img 
           src={imageData} 
