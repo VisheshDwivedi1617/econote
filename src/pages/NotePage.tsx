@@ -5,6 +5,7 @@ import { useNotebook } from "@/contexts/NotebookContext";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DigitalCanvas from "@/components/canvas/DigitalCanvas";
+import ScannedNoteView from "@/components/scanner/ScannedNoteView";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -84,6 +85,9 @@ const NotePage = () => {
     }
   };
   
+  // Determine if this is a scanned note (has imageData)
+  const isScannedNote = currentPage?.isScanned && currentPage?.imageData;
+  
   return (
     <div className="flex flex-col h-screen">
       <Navbar />
@@ -128,7 +132,15 @@ const NotePage = () => {
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">
-              <DigitalCanvas />
+              {isScannedNote ? (
+                // Display scanned note image
+                <div className="h-full p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
+                  <ScannedNoteView imageData={currentPage.imageData!} className="max-w-3xl mx-auto" />
+                </div>
+              ) : (
+                // Display digital canvas for regular notes
+                <DigitalCanvas />
+              )}
             </div>
           )}
         </div>

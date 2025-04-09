@@ -1,4 +1,3 @@
-
 // StorageService.ts - Handles local storage of pen strokes and notes
 
 import { PenStroke } from './PenDataInterpreter';
@@ -9,6 +8,8 @@ export interface NotePage {
   strokes: PenStroke[];
   createdAt: number;
   updatedAt: number;
+  imageData?: string; // Add this field for scanned notes
+  isScanned?: boolean; // Flag to identify scanned notes
 }
 
 export interface Notebook {
@@ -169,6 +170,34 @@ class StorageService {
     }
     
     return { notebookId: notebookId!, pageId: pageId! };
+  }
+  
+  // Add a new method to create a page from a scanned image
+  async createScannedPage(imageData: string, title: string = "Scanned Note"): Promise<NotePage> {
+    const page: NotePage = {
+      id: Date.now().toString(),
+      title: title,
+      strokes: [], // Empty strokes for a scanned page
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      imageData: imageData,
+      isScanned: true
+    };
+    
+    await this.savePage(page);
+    
+    // Also add to current notebook
+    const notebookId = this.getCurrentNotebookId();
+    if (notebookId) {
+      const notebook = await this.getNotebook(notebookId);
+      if (notebook) {
+        notebook.pages.push(page.id);
+        notebook.updatedAt = Date.now();
+        await this.saveNotebook(notebook);
+      }
+    }
+    
+    return page;
   }
 }
 

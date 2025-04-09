@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import StorageService, { NotePage, Notebook } from '@/services/StorageService';
 import { PenStroke } from '@/services/PenDataInterpreter';
@@ -34,6 +33,9 @@ interface NotebookContextType {
   goToPage: (index: number) => Promise<void>;
   getCurrentPageIndex: () => number;
   getTotalPages: () => number;
+  
+  // Create a new page from a scanned image
+  createScannedPage: (imageData: string, title?: string) => Promise<NotePage>;
 }
 
 const NotebookContext = createContext<NotebookContextType | undefined>(undefined);
@@ -46,22 +48,17 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   
-  // Initial load
   useEffect(() => {
     const initializeData = async () => {
       try {
-        // Ensure we have a default notebook and page
         const { notebookId, pageId } = await StorageService.ensureDefaultNotebookAndPage();
         
-        // Load notebooks
         const allNotebooks = await StorageService.getNotebooks();
         setNotebooks(allNotebooks);
         
-        // Set current notebook
         const notebook = await StorageService.getNotebook(notebookId);
         setCurrentNotebook(notebook);
         
-        // Set current page
         const page = await StorageService.getPage(pageId);
         if (page) {
           setCurrentPage(page);
@@ -82,7 +79,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     initializeData();
   }, [toast]);
   
-  // Notebook operations
   const createNotebook = async (title: string): Promise<Notebook> => {
     const newNotebook: Notebook = {
       id: Date.now().toString(),
@@ -111,11 +107,9 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     setCurrentNotebook(notebook);
     StorageService.setCurrentNotebookId(id);
     
-    // Switch to the first page of the notebook if available
     if (notebook.pages.length > 0) {
       await switchPage(notebook.pages[0]);
     } else {
-      // Create a new page if no pages exist
       const newPage = await createPage(`Page 1`);
       notebook.pages.push(newPage.id);
       await StorageService.saveNotebook(notebook);
@@ -134,7 +128,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const deleteNotebook = async (id: string): Promise<void> => {
-    // Don't allow deleting the only notebook
     if (notebooks.length <= 1) {
       toast({
         title: "Cannot delete notebook",
@@ -147,7 +140,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     await StorageService.deleteNotebook(id);
     setNotebooks(prev => prev.filter(n => n.id !== id));
     
-    // If the deleted notebook was the current one, switch to another
     if (currentNotebook?.id === id) {
       const anotherNotebook = notebooks.find(n => n.id !== id);
       if (anotherNotebook) {
@@ -156,7 +148,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Page operations
   const createPage = async (title: string): Promise<NotePage> => {
     if (!currentNotebook) {
       throw new Error("No current notebook selected");
@@ -172,7 +163,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     
     await StorageService.savePage(newPage);
     
-    // Add page to the current notebook
     const updatedNotebook = { ...currentNotebook };
     updatedNotebook.pages.push(newPage.id);
     updatedNotebook.updatedAt = Date.now();
@@ -180,14 +170,12 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     await StorageService.saveNotebook(updatedNotebook);
     setCurrentNotebook(updatedNotebook);
     
-    // Update notebooks list
     setNotebooks(prev => prev.map(n => n.id === updatedNotebook.id ? updatedNotebook : n));
     
     return newPage;
   };
   
   const switchPage = async (id: string): Promise<void> => {
-    // Save current page strokes if needed
     if (currentPage && currentPage.id !== id) {
       await saveCurrentStrokes();
     }
@@ -219,7 +207,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
   const deletePage = async (id: string): Promise<void> => {
     if (!currentNotebook) return;
     
-    // Don't allow deleting the only page
     if (currentNotebook.pages.length <= 1) {
       toast({
         title: "Cannot delete page",
@@ -229,7 +216,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     
-    // Remove page from current notebook
     const updatedNotebook = { ...currentNotebook };
     const pageIndex = updatedNotebook.pages.indexOf(id);
     
@@ -240,14 +226,11 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
       await StorageService.saveNotebook(updatedNotebook);
       setCurrentNotebook(updatedNotebook);
       
-      // Update notebooks list
       setNotebooks(prev => prev.map(n => n.id === updatedNotebook.id ? updatedNotebook : n));
     }
     
-    // Delete the page
     await StorageService.deletePage(id);
     
-    // If the deleted page was the current one, switch to another
     if (currentPage?.id === id) {
       const nextPageIndex = Math.min(pageIndex, updatedNotebook.pages.length - 1);
       if (nextPageIndex >= 0) {
@@ -256,7 +239,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Stroke operations
   const addStroke = async (stroke: PenStroke): Promise<void> => {
     setStrokes(prev => [...prev, stroke]);
   };
@@ -274,7 +256,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     setStrokes(newStrokes);
   };
   
-  // Save current strokes to storage
   const saveCurrentStrokes = async (): Promise<void> => {
     if (!currentPage) return;
     
@@ -283,18 +264,28 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     setCurrentPage(updatedPage);
   };
   
-  // Auto-save strokes periodically
-  useEffect(() => {
-    const saveInterval = setInterval(() => {
-      if (currentPage && strokes.length > 0) {
-        saveCurrentStrokes();
+  const createScannedPage = async (imageData: string, title = "Scanned Note") => {
+    try {
+      const newPage = await StorageService.createScannedPage(imageData, title);
+      
+      setCurrentPage(newPage);
+      
+      if (currentNotebook) {
+        const updatedNotebook = { ...currentNotebook };
+        updatedNotebook.pages.push(newPage.id);
+        updatedNotebook.updatedAt = Date.now();
+        setCurrentNotebook(updatedNotebook);
+        
+        await StorageService.saveNotebook(updatedNotebook);
       }
-    }, 10000); // Save every 10 seconds
-    
-    return () => clearInterval(saveInterval);
-  }, [currentPage, strokes]);
+      
+      return newPage;
+    } catch (error) {
+      console.error("Error creating scanned page:", error);
+      throw error;
+    }
+  };
   
-  // Navigation
   const getCurrentPageIndex = (): number => {
     if (!currentNotebook || !currentPage) return -1;
     return currentNotebook.pages.indexOf(currentPage.id);
@@ -320,7 +311,6 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     if (currentIndex < totalPages - 1) {
       await goToPage(currentIndex + 1);
     } else if (currentIndex === totalPages - 1) {
-      // Create a new page if we're at the last page
       const newPage = await createPage(`Page ${totalPages + 1}`);
       await switchPage(newPage.id);
     }
@@ -354,7 +344,8 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     goToPreviousPage,
     goToPage,
     getCurrentPageIndex,
-    getTotalPages
+    getTotalPages,
+    createScannedPage
   };
   
   return (

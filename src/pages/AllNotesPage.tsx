@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PenTool, Search, Trash, Clock } from "lucide-react";
+import { PenTool, Search, Trash, Clock, Camera, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import StorageService, { NotePage } from "@/services/StorageService";
 
@@ -110,12 +110,31 @@ const AllNotesPage = () => {
                   onClick={() => handleViewNote(page.id)}
                 >
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg truncate">{page.title}</CardTitle>
+                    <CardTitle className="text-lg truncate flex items-center gap-2">
+                      {page.isScanned ? (
+                        <Camera className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <FileText className="h-4 w-4" />
+                      )}
+                      {page.title}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="pb-2">
-                    <p className="text-sm text-gray-500">
-                      {page.strokes.length} {page.strokes.length === 1 ? 'stroke' : 'strokes'}
-                    </p>
+                    {page.isScanned ? (
+                      <div className="h-32 overflow-hidden rounded-md bg-gray-100">
+                        {page.imageData && (
+                          <img 
+                            src={page.imageData} 
+                            alt={page.title}
+                            className="w-full h-full object-cover" 
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        {page.strokes.length} {page.strokes.length === 1 ? 'stroke' : 'strokes'}
+                      </p>
+                    )}
                   </CardContent>
                   <CardFooter className="pt-0 flex justify-between text-xs text-gray-500">
                     <div className="flex items-center">
