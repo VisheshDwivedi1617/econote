@@ -117,7 +117,7 @@ const Sidebar = () => {
     <div className="w-64 border-r border-gray-200 h-[calc(100vh-64px)] bg-gray-50 py-4 overflow-y-auto dark:bg-gray-800 dark:border-gray-700 flex-shrink-0">
       <div className="px-4 mb-4">
         <Button 
-          className="w-full justify-start gap-2 bg-pen-primary hover:bg-pen-dark"
+          className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700"
           onClick={handleCreateNewNote}
         >
           <PenTool className="h-4 w-4" />
@@ -161,14 +161,14 @@ const Sidebar = () => {
                 ))}
                 
                 {section.title === "Tags" && (
-                  <Button variant="ghost" className="w-full justify-start gap-2 text-sm text-pen-primary">
+                  <Button variant="ghost" className="w-full justify-start gap-2 text-sm text-green-600">
                     <Tag className="h-4 w-4" />
                     <span>Add Tag</span>
                   </Button>
                 )}
                 
                 {section.title === "My Notes" && (
-                  <Button variant="ghost" className="w-full justify-start gap-2 text-sm text-pen-primary">
+                  <Button variant="ghost" className="w-full justify-start gap-2 text-sm text-green-600">
                     <FolderPlus className="h-4 w-4" />
                     <span>New Folder</span>
                   </Button>

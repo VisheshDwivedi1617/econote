@@ -37,7 +37,7 @@ const Index = () => {
     localStorage.setItem("hasSeenTutorial", "true");
     
     toast({
-      title: "Welcome to ScribeSync!",
+      title: "Welcome to EcoNote!",
       description: "Start by connecting your smart pen and creating your first note.",
     });
   };

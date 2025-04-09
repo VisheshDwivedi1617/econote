@@ -6,7 +6,7 @@ import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DigitalCanvas from "@/components/canvas/DigitalCanvas";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, PenTool, Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const NotePage = () => {

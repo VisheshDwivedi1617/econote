@@ -1,7 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Pen, CloudUpload, User, Settings, BellRing } from "lucide-react";
+import { CloudUpload, User, Settings, BellRing } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const Navbar = () => {
@@ -26,8 +26,16 @@ const Navbar = () => {
   return (
     <nav className="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-white dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-center space-x-2 cursor-pointer" onClick={handleHome}>
-        <Pen className="h-6 w-6 text-pen-primary" />
-        <span className="text-xl font-semibold text-pen-dark dark:text-white">ScribeSync</span>
+        <img 
+          src="/lovable-uploads/f4922f7f-b535-43b2-95c5-dd0d26787fc1.png" 
+          alt="EcoNote Logo" 
+          className="h-8 w-8"
+          style={{ 
+            objectFit: 'contain',
+            filter: 'brightness(0) invert(0)' // This makes it black in light mode
+          }}
+        />
+        <span className="text-xl font-semibold text-pen-dark dark:text-white">EcoNote</span>
       </div>
       
       <div className="flex items-center space-x-4">

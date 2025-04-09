@@ -70,7 +70,7 @@ const AllNotesPage = () => {
             <h1 className="text-2xl font-bold">All Notes</h1>
             <Button 
               onClick={() => navigate("/")}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             >
               <PenTool className="h-4 w-4" />
               New Note
