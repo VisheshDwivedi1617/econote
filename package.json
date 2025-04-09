@@ -46,6 +46,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
     "fabric": "^6.0.0-beta20",
+    "framer-motion": "^12.6.3",
     "input-otp": "^1.2.4",
     "jspdf": "^3.0.1",
     "lucide-react": "^0.462.0",

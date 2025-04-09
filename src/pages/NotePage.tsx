@@ -6,8 +6,9 @@ import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DigitalCanvas from "@/components/canvas/DigitalCanvas";
 import ScannedNoteView from "@/components/scanner/ScannedNoteView";
+import StudyModeView from "@/components/study/StudyModeView";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, BookOpen } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const NotePage = () => {
@@ -17,6 +18,7 @@ const NotePage = () => {
   const { currentPage, switchPage, updatePage } = useNotebook();
   const [pageTitle, setPageTitle] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showStudyMode, setShowStudyMode] = useState(false);
   
   // Load the note when the component mounts or noteId changes
   useEffect(() => {
@@ -85,6 +87,31 @@ const NotePage = () => {
     }
   };
   
+  const openStudyMode = () => {
+    if (!currentPage) return;
+    
+    // Only allow study mode for notes with content
+    if (currentPage.isScanned && !currentPage.ocrText) {
+      toast({
+        title: "OCR Required",
+        description: "Please wait for OCR processing to complete before using Study Mode",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!currentPage.isScanned && (!currentPage.strokes || currentPage.strokes.length === 0)) {
+      toast({
+        title: "No Content",
+        description: "Add content to this note before using Study Mode",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setShowStudyMode(true);
+  };
+  
   // Determine if this is a scanned note (has imageData)
   const isScannedNote = currentPage?.isScanned && currentPage?.imageData;
   
@@ -123,6 +150,16 @@ const NotePage = () => {
                 <Save className="h-4 w-4" />
                 Save
               </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                onClick={openStudyMode}
+              >
+                <BookOpen className="h-4 w-4" />
+                Study Mode
+              </Button>
             </div>
           </div>
           
@@ -149,6 +186,15 @@ const NotePage = () => {
           )}
         </div>
       </div>
+      
+      {/* Study Mode Dialog */}
+      {currentPage && (
+        <StudyModeView
+          page={currentPage}
+          open={showStudyMode}
+          onOpenChange={setShowStudyMode}
+        />
+      )}
     </div>
   );
 };

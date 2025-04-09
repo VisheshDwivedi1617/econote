@@ -7,12 +7,12 @@ import { toast } from "@/components/ui/use-toast";
 export type OCRLanguage = 'eng' | 'hin' | 'tam' | 'ben' | 'spa' | 'fra' | 'deu' | 'jpn' | 'kor' | 'chi_sim';
 
 class OCRService {
-  private worker: Tesseract.Worker | null = null;
+  private worker: any = null;
   private isProcessing = false;
   private currentLanguage: OCRLanguage = 'eng'; // Default to English
 
   // Initialize the OCR worker with a specific language
-  private async getWorker(language: OCRLanguage = 'eng'): Promise<Tesseract.Worker> {
+  private async getWorker(language: OCRLanguage = 'eng'): Promise<any> {
     if (this.worker && this.currentLanguage === language) {
       return this.worker;
     }
@@ -24,9 +24,7 @@ class OCRService {
     }
     
     // Create a new worker with the requested language
-    this.worker = await createWorker({
-      logger: m => console.log(m), // Optional: for debugging
-    });
+    this.worker = await createWorker();
     
     await this.worker.loadLanguage(language);
     await this.worker.initialize(language);
