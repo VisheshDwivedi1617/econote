@@ -70,7 +70,7 @@ const Sidebar = () => {
     navigate(path);
   };
 
-  // Get recent notes from the current notebook
+  // Get recent notes from the current notebook (safely handle undefined)
   const recentNotes = currentNotebook?.pages ? 
     currentNotebook.pages.slice(0, 5).map(pageId => ({
       name: pageId,
@@ -114,7 +114,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="w-64 border-r border-gray-200 h-[calc(100vh-64px)] bg-gray-50 py-4 overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
+    <div className="w-64 border-r border-gray-200 h-[calc(100vh-64px)] bg-gray-50 py-4 overflow-y-auto dark:bg-gray-800 dark:border-gray-700 flex-shrink-0">
       <div className="px-4 mb-4">
         <Button 
           className="w-full justify-start gap-2 bg-pen-primary hover:bg-pen-dark"

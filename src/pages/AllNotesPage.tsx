@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotebook } from "@/contexts/NotebookContext";
@@ -13,7 +14,7 @@ import StorageService, { NotePage } from "@/services/StorageService";
 
 const AllNotesPage = () => {
   const navigate = useNavigate();
-  const { currentNotebook, deletePage, switchPage } = useNotebook();
+  const { currentNotebook, deletePage } = useNotebook();
   const [searchQuery, setSearchQuery] = useState("");
 
   // In a real implementation, we would load all pages here

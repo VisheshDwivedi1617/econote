@@ -5,12 +5,9 @@ import { useNotebook } from "@/contexts/NotebookContext";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DigitalCanvas from "@/components/canvas/DigitalCanvas";
-import NoteHeader from "@/components/notes/NoteHeader";
-import PenStatus from "@/components/pen/PenStatus";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, PenTool, Save } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import StorageService, { NotePage as NotePageType } from "@/services/StorageService";
 
 const NotePage = () => {
   const { noteId } = useParams<{ noteId: string }>();
@@ -45,7 +42,7 @@ const NotePage = () => {
     };
     
     loadNoteData();
-  }, [noteId, navigate, toast]);
+  }, [noteId, navigate, switchPage, toast]);
   
   // Update local title state when currentPage changes
   useEffect(() => {
@@ -113,8 +110,6 @@ const NotePage = () => {
             </div>
             
             <div className="flex items-center gap-2">
-              <PenStatus />
-              
               <Button
                 variant="outline"
                 size="sm"
