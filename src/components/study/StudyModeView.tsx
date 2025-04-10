@@ -1,288 +1,269 @@
-
-import React, { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { toast } from "@/components/ui/use-toast";
 import { 
-  BookOpen, 
-  HelpCircle, 
-  Award, 
-  CheckCircle,
-  XCircle 
+  Loader2, FileQuestion, FileText, Brain, CopyCheck, ListChecks
 } from "lucide-react";
-import { NotePage } from "@/services/StorageService";
 import StudyService from "@/services/StudyService";
-import { Flashcard as FlashcardType, Quiz, StudySession } from "@/models/StudyModels";
-import Flashcard from "./Flashcard";
-import QuizCard from "./QuizCard";
+import { Flashcard } from "@/models/StudyModels";
+import FlashcardView from "@/components/study/FlashcardView";
+import QuizView from "@/components/study/QuizView";
+import { useToast } from "@/components/ui/use-toast";
 
 interface StudyModeViewProps {
-  page: NotePage;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  noteId: string;
+  onBack: () => void;
 }
 
-const StudyModeView = ({ page, open, onOpenChange }: StudyModeViewProps) => {
-  const [activeTab, setActiveTab] = useState("flashcards");
-  const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
-  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  const [studySession, setStudySession] = useState<StudySession | null>(null);
-  const [showResults, setShowResults] = useState(false);
-  
-  useEffect(() => {
-    if (open) {
-      initializeStudySession();
-    } else {
-      resetStudySession();
-    }
-  }, [open, page]);
-  
-  const initializeStudySession = () => {
+interface StudyModeViewState {
+  currentNote: any | null;
+  isLoading: boolean;
+  mode: 'flashcards' | 'quiz' | null;
+  flashcards: Flashcard[];
+  quizzes: any[];
+  currentFlashcardIndex: number;
+  currentQuizIndex: number;
+  isGenerating: boolean;
+}
+
+class StudyModeView extends React.Component<StudyModeViewProps, StudyModeViewState> {
+  constructor(props: StudyModeViewProps) {
+    super(props);
+    this.state = {
+      currentNote: null,
+      isLoading: true,
+      mode: null,
+      flashcards: [],
+      quizzes: [],
+      currentFlashcardIndex: 0,
+      currentQuizIndex: 0,
+      isGenerating: false,
+    };
+  }
+
+  componentDidMount() {
+    this.loadNote();
+  }
+
+  loadNote = async () => {
     try {
-      const generatedFlashcards = StudyService.generateFlashcards(page);
-      setFlashcards(generatedFlashcards);
+      // Load the note content from storage
+      const notePage = localStorage.getItem(`note-${this.props.noteId}`);
       
-      let noteText = "";
-      if (page.isScanned && page.ocrText) {
-        noteText = page.ocrText;
-      } else if (page.strokes && page.strokes.length > 0) {
-        noteText = "This is a handwritten note.";
-      }
-      
-      const generatedQuizzes = StudyService.generateQuizzes(generatedFlashcards, noteText);
-      setQuizzes(generatedQuizzes);
-      
-      const newSession = StudyService.createStudySession(
-        page.id, 
-        generatedFlashcards,
-        generatedQuizzes
-      );
-      setStudySession(newSession);
-      
-      setCurrentFlashcardIndex(0);
-      setCurrentQuizIndex(0);
-      setShowResults(false);
-      
-      if (generatedFlashcards.length === 0) {
-        toast({
-          title: "Not enough content",
-          description: "Unable to generate flashcards from this note. Try adding more content.",
-          variant: "destructive",
+      if (notePage) {
+        this.setState({ 
+          currentNote: JSON.parse(notePage),
+          isLoading: false
         });
-        onOpenChange(false);
+      } else {
+        this.setState({ 
+          currentNote: null,
+          isLoading: false
+        });
       }
     } catch (error) {
-      console.error("Error initializing study session:", error);
-      toast({
-        title: "Error",
-        description: "Failed to initialize study mode",
-        variant: "destructive",
+      console.error("Error loading note:", error);
+      this.setState({ 
+        currentNote: null,
+        isLoading: false
       });
-      onOpenChange(false);
     }
   };
   
-  const resetStudySession = () => {
-    setFlashcards([]);
-    setQuizzes([]);
-    setStudySession(null);
-    setCurrentFlashcardIndex(0);
-    setCurrentQuizIndex(0);
-    setShowResults(false);
+  handleBack = () => {
+    this.props.onBack();
   };
   
-  const handleNext = () => {
-    if (activeTab === "flashcards") {
-      if (currentFlashcardIndex < flashcards.length - 1) {
-        setCurrentFlashcardIndex(currentFlashcardIndex + 1);
-      } else {
-        setActiveTab("quiz");
-      }
-    } else {
-      if (currentQuizIndex < quizzes.length - 1) {
-        setCurrentQuizIndex(currentQuizIndex + 1);
-      } else {
-        setShowResults(true);
-      }
-    }
-  };
-  
-  const handlePrevious = () => {
-    if (activeTab === "flashcards") {
-      if (currentFlashcardIndex > 0) {
-        setCurrentFlashcardIndex(currentFlashcardIndex - 1);
-      }
-    } else {
-      if (currentQuizIndex > 0) {
-        setCurrentQuizIndex(currentQuizIndex - 1);
-      }
-    }
-  };
-  
-  const handleAnswerQuiz = (isCorrect: boolean) => {
-    if (!studySession) return;
+  generateFlashcards = async () => {
+    this.setState({ isGenerating: true });
     
-    const updatedSession = { 
-      ...studySession,
-      totalAnswered: studySession.totalAnswered + 1,
-      correctAnswers: isCorrect ? studySession.correctAnswers + 1 : studySession.correctAnswers
-    };
-    
-    setStudySession(updatedSession);
-  };
-  
-  const getProgress = () => {
-    if (!studySession) return 0;
-    
-    if (activeTab === "flashcards") {
-      return Math.round((currentFlashcardIndex / flashcards.length) * 100);
-    } else {
-      return Math.round((currentQuizIndex / quizzes.length) * 100);
+    try {
+      const flashcards = await StudyService.generateFlashcards(this.props.noteId, this.state.currentNote);
+      this.setState({ 
+        flashcards,
+        mode: 'flashcards',
+        currentFlashcardIndex: 0,
+        isGenerating: false
+      });
+    } catch (error) {
+      console.error("Error generating flashcards:", error);
+      this.setState({ isGenerating: false });
     }
   };
   
-  const handleClose = () => {
-    if (studySession && studySession.totalAnswered > 0) {
-      const updatedSession = {
-        ...studySession,
-        completedAt: Date.now()
-      };
-      setStudySession(updatedSession);
-    }
+  generateQuizzes = async () => {
+    this.setState({ isGenerating: true });
     
-    onOpenChange(false);
-  };
-  
-  const handleStartOver = () => {
-    setShowResults(false);
-    setCurrentFlashcardIndex(0);
-    setCurrentQuizIndex(0);
-    setActiveTab("flashcards");
-    
-    if (studySession) {
-      const resetSession = {
-        ...studySession,
-        correctAnswers: 0,
-        totalAnswered: 0,
-        startedAt: Date.now()
-      };
-      setStudySession(resetSession);
+    try {
+      const quizzes = await StudyService.generateQuizzes(this.props.noteId, this.state.currentNote);
+      this.setState({ 
+        quizzes,
+        mode: 'quiz',
+        currentQuizIndex: 0,
+        isGenerating: false
+      });
+    } catch (error) {
+      console.error("Error generating quizzes:", error);
+      this.setState({ isGenerating: false });
     }
   };
   
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Study Mode: {page.title}
-          </DialogTitle>
-          <DialogDescription>
-            Enhance your learning with flashcards and quizzes generated from this note.
-          </DialogDescription>
-        </DialogHeader>
-        
-        {!showResults ? (
-          <>
-            <Progress value={getProgress()} className="h-2" />
-            
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-2">
-                <TabsTrigger value="flashcards" className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  <span>Flashcards</span>
-                </TabsTrigger>
-                <TabsTrigger value="quiz" className="flex items-center gap-2">
-                  <HelpCircle className="h-4 w-4" />
-                  <span>Quiz</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="flashcards">
-                {flashcards.length > 0 && (
-                  <Flashcard
-                    flashcard={flashcards[currentFlashcardIndex]}
-                    onNext={handleNext}
-                    onPrevious={handlePrevious}
-                    hasNext={currentFlashcardIndex < flashcards.length - 1}
-                    hasPrevious={currentFlashcardIndex > 0}
-                  />
-                )}
-              </TabsContent>
-              
-              <TabsContent value="quiz">
-                {quizzes.length > 0 && (
-                  <QuizCard
-                    quiz={quizzes[currentQuizIndex]}
-                    onNext={handleNext}
-                    onPrevious={handlePrevious}
-                    onAnswer={handleAnswerQuiz}
-                    hasNext={currentQuizIndex < quizzes.length - 1}
-                    hasPrevious={currentQuizIndex > 0}
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
-          </>
-        ) : (
-          <div className="py-6 text-center">
-            <div className="mb-6 inline-flex justify-center items-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900">
-              <Award className="h-8 w-8 text-green-600 dark:text-green-400" />
-            </div>
-            
-            <h3 className="text-lg font-medium mb-2">Study Session Complete!</h3>
-            
-            {studySession && (
-              <div className="mb-6">
-                <div className="text-3xl font-bold mb-2">
-                  {Math.round((studySession.correctAnswers / studySession.totalAnswered) * 100)}%
-                </div>
-                <div className="flex items-center justify-center gap-4">
-                  <div className="flex items-center text-green-600 dark:text-green-400">
-                    <CheckCircle className="h-5 w-5 mr-1" />
-                    <span>{studySession.correctAnswers} correct</span>
-                  </div>
-                  <div className="flex items-center text-red-600 dark:text-red-400">
-                    <XCircle className="h-5 w-5 mr-1" />
-                    <span>{studySession.totalAnswered - studySession.correctAnswers} incorrect</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button onClick={handleStartOver}>
-                Start Over
-              </Button>
-              <Button variant="outline" onClick={handleClose}>
-                Close
-              </Button>
-            </div>
+  renderFlashcards = () => {
+    const { flashcards, currentFlashcardIndex } = this.state;
+    
+    if (flashcards.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-full">
+          <div className="text-center">
+            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No Flashcards</h3>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              No flashcards have been generated for this note.
+            </p>
+            <Button className="mt-4" onClick={this.handleBack}>Go Back</Button>
           </div>
-        )}
-        
-        {!showResults && (
-          <DialogFooter>
-            <Button variant="outline" onClick={handleClose}>
-              Exit Study Mode
+        </div>
+      );
+    }
+    
+    return (
+      <FlashcardView 
+        flashcard={flashcards[currentFlashcardIndex]}
+        current={currentFlashcardIndex + 1}
+        total={flashcards.length}
+        onNext={() => this.setState(prevState => ({
+          currentFlashcardIndex: Math.min(prevState.flashcards.length - 1, prevState.currentFlashcardIndex + 1)
+        }))}
+        onPrev={() => this.setState(prevState => ({
+          currentFlashcardIndex: Math.max(0, prevState.currentFlashcardIndex - 1)
+        }))}
+        onBack={this.handleBack}
+      />
+    );
+  };
+  
+  renderQuiz = () => {
+    const { quizzes, currentQuizIndex } = this.state;
+    
+    if (quizzes.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-full">
+          <div className="text-center">
+            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No Quizzes</h3>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              No quizzes have been generated for this note.
+            </p>
+            <Button className="mt-4" onClick={this.handleBack}>Go Back</Button>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <QuizView 
+        quiz={quizzes[currentQuizIndex]}
+        current={currentQuizIndex + 1}
+        total={quizzes.length}
+        onNext={() => this.setState(prevState => ({
+          currentQuizIndex: Math.min(prevState.quizzes.length - 1, prevState.currentQuizIndex + 1)
+        }))}
+        onPrev={() => this.setState(prevState => ({
+          currentQuizIndex: Math.max(0, prevState.currentQuizIndex - 1)
+        }))}
+        onBack={this.handleBack}
+      />
+    );
+  };
+
+renderContent() {
+  const { currentNote, isLoading, mode } = this.state;
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-600 dark:text-gray-300" />
+          <p className="text-gray-600 dark:text-gray-300">Generating study materials...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!currentNote) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="text-center">
+          <FileQuestion className="h-16 w-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">No note content found</h3>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">The note might be empty or an error occurred.</p>
+          <Button className="mt-4" onClick={this.handleBack}>Go Back</Button>
+        </div>
+      </div>
+    );
+  }
+  
+  if (mode === 'flashcards' && this.state.flashcards.length > 0) {
+    return this.renderFlashcards();
+  } else if (mode === 'quiz' && this.state.quizzes.length > 0) {
+    return this.renderQuiz();
+  } else {
+    // Try to get content in a safe way
+    const content = currentNote.content || "";
+    
+    if (!content || content.trim() === '') {
+      return (
+        <div className="flex justify-center items-center h-full">
+          <div className="text-center">
+            <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Empty Note</h3>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">This note doesn't have any content to study.</p>
+            <Button className="mt-4" onClick={this.handleBack}>Go Back</Button>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="text-center">
+          <Brain className="h-16 w-16 mx-auto mb-4 text-blue-500" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Ready to Study</h3>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Choose a study mode to begin learning from this note.
+          </p>
+          <div className="flex gap-4 justify-center mt-6">
+            <Button 
+              variant="outline"
+              className="gap-2"
+              onClick={() => this.generateFlashcards()} 
+              disabled={this.state.isGenerating}
+            >
+              <CopyCheck className="h-4 w-4" />
+              Flashcards
             </Button>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-};
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => this.generateQuizzes()}
+              disabled={this.state.isGenerating}
+            >
+              <ListChecks className="h-4 w-4" />
+              Quiz
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
+  render() {
+    return (
+      <div className="flex flex-col h-full">
+        {this.renderContent()}
+      </div>
+    );
+  }
+}
 
 export default StudyModeView;

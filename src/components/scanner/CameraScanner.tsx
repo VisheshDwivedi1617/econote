@@ -1,12 +1,14 @@
+
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, X, CheckCircle, RefreshCw } from "lucide-react";
+import { Camera, X, CheckCircle, RefreshCw, Smartphone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useNotebook } from "@/contexts/NotebookContext";
 import { detectEdges, enhanceImage } from "@/services/ImageProcessingService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import OCRService, { OCRLanguage } from "@/services/OCRService";
+import { useTheme } from "@/hooks/use-theme";
 
 interface CameraScannerProps {
   open: boolean;
@@ -26,7 +28,9 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [language, setLanguage] = useState<OCRLanguage>('eng');
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { theme } = useTheme();
   
   const languages = OCRService.getSupportedLanguages();
   
@@ -44,7 +48,10 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   
   const initializeCamera = async () => {
     try {
+      setCameraError(null);
+      
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError("Camera API is not supported in your browser");
         toast({
           title: "Error",
           description: "Camera API is not supported in your browser",
@@ -54,23 +61,48 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         return;
       }
       
-      const constraints = {
-        video: {
+      // Try to detect if we're on mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      const constraints: MediaStreamConstraints = {
+        video: isMobile ? {
+          facingMode: { exact: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } : {
           facingMode: "environment",
           width: { ideal: 1920 },
           height: { ideal: 1080 }
         }
       };
       
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsCameraReady(true);
-        setHasPermission(true);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setIsCameraReady(true);
+          setHasPermission(true);
+        }
+      } catch (error) {
+        console.warn("Failed with environment camera, trying default:", error);
+        
+        // If environment camera fails, try without specifying (fallback for mobile)
+        const fallbackConstraints = {
+          video: true
+        };
+        
+        const fallbackStream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+          setIsCameraReady(true);
+          setHasPermission(true);
+        }
       }
     } catch (error) {
       console.error("Error accessing camera:", error);
+      setCameraError("Please allow camera access to scan notes");
       toast({
         title: "Permission Denied",
         description: "Please allow camera access to scan notes",
@@ -195,9 +227,19 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         </DialogHeader>
         
         <div className="flex flex-col items-center">
+          {cameraError && (
+            <div className="text-center p-4 mb-4 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-lg">
+              <p className="flex items-center justify-center gap-2">
+                <X className="h-5 w-5" />
+                {cameraError}
+              </p>
+            </div>
+          )}
+          
           {hasPermission === false && (
             <div className="text-center p-4">
-              <p className="mb-4">Camera access is required to scan notes.</p>
+              <Smartphone className="h-16 w-16 mx-auto mb-4 text-blue-500" />
+              <p className="mb-4 dark:text-gray-300">Camera access is required to scan notes.</p>
               <Button 
                 onClick={initializeCamera}
                 className="bg-green-600 hover:bg-green-700"
@@ -215,7 +257,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
                     ref={videoRef}
                     autoPlay 
                     playsInline
-                    className="w-full rounded-md border border-gray-300"
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-700"
                     style={{ display: isCameraReady ? 'block' : 'none' }}
                     onCanPlay={() => setIsCameraReady(true)}
                   />
@@ -238,7 +280,7 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
                   <img 
                     src={capturedImage} 
                     alt="Captured" 
-                    className="w-full rounded-md border border-gray-300"
+                    className="w-full rounded-md border border-gray-300 dark:border-gray-600"
                   />
                   
                   <div className="mt-4">

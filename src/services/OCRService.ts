@@ -1,84 +1,97 @@
 
-// OCRService.ts - Handles text recognition from images
+/**
+ * OCR Service for text recognition from images
+ */
 
 import { createWorker } from 'tesseract.js';
-import { toast } from "@/components/ui/use-toast";
 
-export type OCRLanguage = 'eng' | 'hin' | 'tam' | 'ben' | 'spa' | 'fra' | 'deu' | 'jpn' | 'kor' | 'chi_sim';
+// Define the valid OCR languages
+export type OCRLanguage = 
+  'eng' | 'fra' | 'deu' | 'ita' | 'spa' | 'por' | 
+  'chi_sim' | 'chi_tra' | 'jpn' | 'kor' | 'rus' | 
+  'ara' | 'hin';
+
+type LanguageOption = {
+  id: OCRLanguage;
+  name: string;
+};
 
 class OCRService {
   private worker: any = null;
-  private isProcessing = false;
-  private currentLanguage: OCRLanguage = 'eng'; // Default to English
-
-  // Initialize the OCR worker with a specific language
-  private async getWorker(language: OCRLanguage = 'eng'): Promise<any> {
-    if (this.worker && this.currentLanguage === language) {
+  private isWorkerInitialized = false;
+  private language: OCRLanguage = 'eng';
+  
+  private languageOptions: LanguageOption[] = [
+    { id: 'eng', name: 'English' },
+    { id: 'fra', name: 'French' },
+    { id: 'deu', name: 'German' },
+    { id: 'ita', name: 'Italian' },
+    { id: 'spa', name: 'Spanish' },
+    { id: 'por', name: 'Portuguese' },
+    { id: 'chi_sim', name: 'Chinese (Simplified)' },
+    { id: 'chi_tra', name: 'Chinese (Traditional)' },
+    { id: 'jpn', name: 'Japanese' },
+    { id: 'kor', name: 'Korean' },
+    { id: 'rus', name: 'Russian' },
+    { id: 'ara', name: 'Arabic' },
+    { id: 'hin', name: 'Hindi' }
+  ];
+  
+  /**
+   * Initialize Tesseract worker with the specified language
+   */
+  private initializeWorker = async (lang: OCRLanguage = 'eng'): Promise<any> => {
+    if (this.worker && this.isWorkerInitialized && this.language === lang) {
       return this.worker;
     }
     
-    // If worker exists but with different language, terminate it
+    // If worker exists but different language, terminate it
     if (this.worker) {
       await this.worker.terminate();
-      this.worker = null;
     }
     
-    // Create a new worker with the requested language
+    // Create and initialize new worker
     this.worker = await createWorker();
+    await this.worker.loadLanguage(lang);
+    await this.worker.initialize(lang);
     
-    await this.worker.loadLanguage(language);
-    await this.worker.initialize(language);
-    this.currentLanguage = language;
+    this.isWorkerInitialized = true;
+    this.language = lang;
     
     return this.worker;
-  }
+  };
   
-  // Recognize text from an image URL
-  async recognizeText(
-    imageUrl: string, 
-    language: OCRLanguage = 'eng'
-  ): Promise<string> {
-    if (this.isProcessing) {
-      return Promise.reject('OCR is already processing an image');
-    }
-    
-    this.isProcessing = true;
-    
+  /**
+   * Recognize text from an image URL
+   */
+  recognizeText = async (imageUrl: string, language: OCRLanguage = 'eng'): Promise<string> => {
     try {
-      const worker = await this.getWorker(language);
+      const worker = await this.initializeWorker(language);
       const result = await worker.recognize(imageUrl);
       return result.data.text;
     } catch (error) {
-      console.error('OCR error:', error);
-      throw error;
-    } finally {
-      this.isProcessing = false;
+      console.error('OCR Error:', error);
+      throw new Error(`Failed to recognize text: ${error}`);
     }
-  }
+  };
   
-  // Clean up resources when done
-  async cleanup(): Promise<void> {
+  /**
+   * Get supported languages for OCR
+   */
+  getSupportedLanguages = (): LanguageOption[] => {
+    return this.languageOptions;
+  };
+  
+  /**
+   * Clean up resources
+   */
+  terminateWorker = async (): Promise<void> => {
     if (this.worker) {
       await this.worker.terminate();
       this.worker = null;
+      this.isWorkerInitialized = false;
     }
-  }
-  
-  // Get the supported languages
-  getSupportedLanguages(): {id: OCRLanguage, name: string}[] {
-    return [
-      { id: 'eng', name: 'English' },
-      { id: 'hin', name: 'Hindi' },
-      { id: 'tam', name: 'Tamil' },
-      { id: 'ben', name: 'Bengali' },
-      { id: 'spa', name: 'Spanish' },
-      { id: 'fra', name: 'French' },
-      { id: 'deu', name: 'German' },
-      { id: 'jpn', name: 'Japanese' },
-      { id: 'kor', name: 'Korean' },
-      { id: 'chi_sim', name: 'Chinese (Simplified)' }
-    ];
-  }
+  };
 }
 
 export default new OCRService();

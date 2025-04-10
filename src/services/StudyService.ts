@@ -1,184 +1,248 @@
 
 import { Flashcard, Quiz, StudySession } from "@/models/StudyModels";
-import { NotePage } from "@/services/StorageService";
+import StorageService from "./StorageService";
 
 class StudyService {
-  // Generate flashcards from note text
-  generateFlashcards(page: NotePage): Flashcard[] {
-    if (!page) return [];
-    
-    let text = "";
-    
-    // For scanned notes, use OCR text
-    if (page.isScanned && page.ocrText) {
-      text = page.ocrText;
-    } else if (page.strokes && page.strokes.length > 0) {
-      // For digital notes with strokes, use a placeholder text
-      // In a real implementation, this would be generated from strokes
-      text = "This note contains handwritten content that hasn't been processed with OCR yet.";
-    } else {
-      // Fallback to an empty string if no content
-      return [];
-    }
-    
-    const flashcards: Flashcard[] = [];
-    
-    // Look for text in double brackets [[answer]] as dedicated flashcard answers
-    const bracketRegex = /\[\[(.*?)\]\]/g;
-    let match;
-    let paragraphs = text.split(/\n\s*\n/); // Split by paragraphs (double line breaks)
-    
-    // First pass: extract explicit [[answers]]
-    while ((match = bracketRegex.exec(text)) !== null) {
-      const answer = match[1];
-      const sentence = this.extractSentenceWithBrackets(text, match.index);
+  /**
+   * Generate flashcards from note content
+   */
+  generateFlashcards = async (noteId: string, notePage: any): Promise<Flashcard[]> => {
+    try {
+      // Get note content, handling cases where content might not exist
+      let content = '';
       
-      if (sentence) {
-        const question = sentence.replace(/\[\[(.*?)\]\]/g, '_______');
-        
-        flashcards.push({
-          id: Date.now().toString() + flashcards.length,
-          question,
-          answer,
-          noteId: page.id,
-          createdAt: Date.now()
-        });
+      if (notePage && typeof notePage === 'object') {
+        // Try different properties that might hold content
+        content = notePage.content || notePage.text || notePage.data?.content || '';
       }
-    }
-    
-    // Second pass: if no bracketed answers, create basic flashcards from paragraphs
-    if (flashcards.length === 0 && paragraphs.length > 0) {
-      paragraphs.forEach((paragraph, index) => {
-        if (paragraph.trim().length > 10) { // Only use paragraphs with some content
-          // Split by sentences
-          const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [];
+      
+      if (!content || typeof content !== 'string' || content.trim() === '') {
+        // Create a placeholder if no content found
+        return [{
+          id: this.generateId(),
+          question: "What is the purpose of this note?",
+          answer: "To capture your thoughts and ideas",
+          noteId,
+          createdAt: Date.now()
+        }];
+      }
+
+      // Split content into paragraphs for real content
+      const paragraphs = content.split('\n').filter(p => p.trim().length > 0);
+      
+      // Basic processing - create a flashcard from each paragraph
+      return paragraphs.map((paragraph) => {
+        // Look for bracketed text as answers
+        const bracketMatch = paragraph.match(/\[\[(.*?)\]\]/);
+        
+        if (bracketMatch) {
+          const answer = bracketMatch[1];
+          const question = paragraph.replace(/\[\[.*?\]\]/, '_____');
           
-          for (let i = 0; i < Math.min(sentences.length, 2); i++) {
-            const sentence = sentences[i].trim();
-            if (sentence.length > 15) { // Only use substantial sentences
-              const words = sentence.split(/\s+/);
-              
-              if (words.length > 4) {
-                // Find a word to remove (try to pick a noun or important word)
-                const wordIndex = Math.floor(words.length / 2);
-                const answer = words[wordIndex].replace(/[,.!?;:"']/g, '');
-                
-                if (answer.length > 3) { // Only use meaningful words
-                  words[wordIndex] = '_______';
-                  const question = words.join(' ');
-                  
-                  flashcards.push({
-                    id: Date.now().toString() + flashcards.length,
-                    question,
-                    answer,
-                    noteId: page.id,
-                    createdAt: Date.now()
-                  });
-                }
-              }
-            }
+          return {
+            id: this.generateId(),
+            question,
+            answer,
+            noteId,
+            createdAt: Date.now()
+          };
+        }
+        
+        // If no bracketed text, make a simple flashcard
+        const words = paragraph.split(' ');
+        if (words.length < 3) {
+          return {
+            id: this.generateId(),
+            question: `What does "${paragraph}" refer to?`,
+            answer: "Your notes contain this important point",
+            noteId,
+            createdAt: Date.now()
+          };
+        }
+        
+        // Pick a random word to remove for the question
+        const randomIndex = Math.floor(Math.random() * (words.length - 1)) + 1;
+        const answer = words[randomIndex];
+        words[randomIndex] = '_____';
+        
+        return {
+          id: this.generateId(),
+          question: words.join(' '),
+          answer,
+          noteId,
+          createdAt: Date.now()
+        };
+      });
+    } catch (error) {
+      console.error("Error generating flashcards:", error);
+      
+      // Return a default flashcard in case of error
+      return [{
+        id: this.generateId(),
+        question: "What is EcoNote useful for?",
+        answer: "Taking and studying notes effectively",
+        noteId,
+        createdAt: Date.now()
+      }];
+    }
+  };
+
+  /**
+   * Generate quizzes from note content
+   */
+  generateQuizzes = async (noteId: string, notePage: any): Promise<Quiz[]> => {
+    try {
+      // Get note content safely
+      let content = '';
+      
+      if (notePage && typeof notePage === 'object') {
+        // Try different properties that might hold content
+        content = notePage.content || notePage.text || notePage.data?.content || '';
+      }
+      
+      if (!content || typeof content !== 'string' || content.trim() === '') {
+        // Create a placeholder if no content found
+        return [{
+          id: this.generateId(),
+          question: "Which of these is a feature of EcoNote?",
+          options: [
+            "Digital Canvas for writing",
+            "Video editing",
+            "3D modeling",
+            "Sound recording"
+          ],
+          correctAnswer: "Digital Canvas for writing",
+          noteId,
+          createdAt: Date.now()
+        }];
+      }
+
+      // Split content into paragraphs
+      const paragraphs = content.split('\n').filter(p => p.trim().length > 0);
+      
+      // Extract all words to use for distractors
+      const allWords = content
+        .split(/\s+/)
+        .filter(word => word.length > 4)
+        .map(word => word.replace(/[.,;:!?()\[\]{}""]/g, ''));
+      
+      // Create quizzes from paragraphs
+      const quizzes = paragraphs.slice(0, 5).map(paragraph => {
+        // Look for bracketed text as correct answers
+        const bracketMatch = paragraph.match(/\[\[(.*?)\]\]/);
+        let question, correctAnswer;
+        
+        if (bracketMatch) {
+          correctAnswer = bracketMatch[1];
+          question = paragraph.replace(/\[\[.*?\]\]/, '_____');
+          question = `What goes in the blank? "${question}"`;
+        } else {
+          // If no bracketed text, create a question about the paragraph
+          const words = paragraph.split(' ');
+          if (words.length < 5) {
+            question = `Which statement best relates to "${paragraph}"?`;
+            correctAnswer = "This is mentioned in your notes";
+          } else {
+            // Remove a key word to create a fill-in-the-blank question
+            const randomIndex = Math.floor(Math.random() * (words.length - 1)) + 1;
+            correctAnswer = words[randomIndex].replace(/[.,;:!?]/g, '');
+            words[randomIndex] = '_____';
+            question = `What word belongs in the blank? "${words.join(' ')}"`;
           }
         }
-      });
-    }
-    
-    return flashcards;
-  }
-  
-  // Extract a full sentence containing the bracketed text
-  private extractSentenceWithBrackets(text: string, bracketIndex: number): string | null {
-    // Find the start of the sentence (previous period or beginning of text)
-    let startIndex = text.lastIndexOf('.', bracketIndex);
-    startIndex = startIndex === -1 ? 0 : startIndex + 1;
-    
-    // Find the end of the sentence (next period or end of text)
-    let endIndex = text.indexOf('.', bracketIndex);
-    endIndex = endIndex === -1 ? text.length : endIndex + 1;
-    
-    return text.substring(startIndex, endIndex).trim();
-  }
-  
-  // Generate multiple choice quizzes from flashcards
-  generateQuizzes(flashcards: Flashcard[], noteText: string): Quiz[] {
-    const quizzes: Quiz[] = [];
-    const words = this.extractPotentialAnswers(noteText);
-    
-    flashcards.forEach(flashcard => {
-      // Create a copy of all words for each flashcard
-      const availableWords = [...words];
-      const options: string[] = [flashcard.answer];
-      
-      // Remove the correct answer from the list of available words
-      const correctAnswerIndex = availableWords.indexOf(flashcard.answer);
-      if (correctAnswerIndex !== -1) {
-        availableWords.splice(correctAnswerIndex, 1);
-      }
-      
-      // Add 3 random wrong answers
-      while (options.length < 4 && availableWords.length > 0) {
-        const randomIndex = Math.floor(Math.random() * availableWords.length);
-        const word = availableWords[randomIndex];
         
-        if (!options.includes(word) && word.length > 2) {
-          options.push(word);
-          availableWords.splice(randomIndex, 1);
-        }
-      }
-      
-      // Shuffle the options
-      this.shuffleArray(options);
-      
-      quizzes.push({
-        id: Date.now().toString() + quizzes.length,
-        question: flashcard.question,
-        correctAnswer: flashcard.answer,
-        options,
-        noteId: flashcard.noteId,
-        createdAt: Date.now()
+        // Generate 3 random distractors
+        const distractors = this.getRandomDistractors(allWords, correctAnswer, 3);
+        
+        // Combine correct answer with distractors and shuffle
+        const options = this.shuffleArray([correctAnswer, ...distractors]);
+        
+        return {
+          id: this.generateId(),
+          question,
+          options,
+          correctAnswer,
+          noteId,
+          createdAt: Date.now()
+        };
       });
-    });
-    
-    return quizzes;
-  }
-  
-  // Extract potential answer words from the note text
-  private extractPotentialAnswers(text: string): string[] {
-    // Split text into words and filter out common words and punctuation
-    const words = text.split(/\s+/)
-      .map(word => word.replace(/[,.!?;:"']/g, '').toLowerCase())
-      .filter(word => word.length > 3)
-      .filter(word => !this.isCommonWord(word));
-    
-    // Remove duplicates
-    return Array.from(new Set(words));
-  }
-  
-  // Check if a word is a common word (that wouldn't make a good answer)
-  private isCommonWord(word: string): boolean {
-    const commonWords = ['the', 'and', 'that', 'have', 'for', 'not', 'with', 'you', 'this', 'but'];
-    return commonWords.includes(word.toLowerCase());
-  }
-  
-  // Fisher-Yates shuffle algorithm
-  private shuffleArray(array: any[]): void {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
+      
+      return quizzes;
+    } catch (error) {
+      console.error("Error generating quizzes:", error);
+      
+      // Return a default quiz in case of error
+      return [{
+        id: this.generateId(),
+        question: "Which of these is a feature of EcoNote?",
+        options: [
+          "Study Mode for learning",
+          "Video editing",
+          "3D modeling",
+          "Sound recording"
+        ],
+        correctAnswer: "Study Mode for learning",
+        noteId,
+        createdAt: Date.now()
+      }];
     }
-  }
-  
-  // Create a new study session
-  createStudySession(noteId: string, flashcards: Flashcard[], quizzes: Quiz[]): StudySession {
-    return {
-      id: Date.now().toString(),
-      noteId,
-      flashcards,
-      quizzes,
-      startedAt: Date.now(),
-      correctAnswers: 0,
-      totalAnswered: 0
-    };
-  }
+  };
+
+  /**
+   * Save a study session
+   */
+  saveStudySession = async (session: StudySession): Promise<StudySession> => {
+    try {
+      // Implementation would depend on the storage mechanism
+      return session;
+    } catch (error) {
+      throw new Error(`Failed to save study session: ${error}`);
+    }
+  };
+
+  /**
+   * Generate random ID for new items
+   */
+  private generateId = (): string => {
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15);
+  };
+
+  /**
+   * Get random distractor options for quizzes
+   */
+  private getRandomDistractors = (wordPool: string[], correctAnswer: string, count: number): string[] => {
+    // Filter out the correct answer or very similar answers
+    const filteredPool = wordPool.filter(word => 
+      word.toLowerCase() !== correctAnswer.toLowerCase() && 
+      word.length > 3
+    );
+    
+    // If we don't have enough words, create some
+    if (filteredPool.length < count) {
+      return [
+        "Option A",
+        "Option B",
+        "Option C",
+        "Option D"
+      ].slice(0, count);
+    }
+    
+    // Shuffle and pick the first 'count' items
+    return this.shuffleArray(filteredPool).slice(0, count);
+  };
+
+  /**
+   * Shuffle an array randomly
+   */
+  private shuffleArray = <T>(array: T[]): T[] => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
 }
 
 export default new StudyService();
