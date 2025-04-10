@@ -1,4 +1,6 @@
 
+// Study mode related models
+
 export interface Flashcard {
   id: string;
   question: string;
@@ -10,8 +12,8 @@ export interface Flashcard {
 export interface Quiz {
   id: string;
   question: string;
-  correctAnswer: string;
   options: string[];
+  correctAnswer: string;
   noteId: string;
   createdAt: number;
 }

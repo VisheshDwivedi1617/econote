@@ -45,10 +45,8 @@ const TextConversionPanel = () => {
         return;
       }
       
-      // Since recognizeHandwriting doesn't exist, we'll use the canvas to get an image URL
-      // and then use recognizeText instead
-      // This is a simplified approach - in a real implementation, you would need to 
-      // convert strokes to an image URL first
+      // Since we can't directly recognize handwriting from strokes,
+      // we'll use the canvas to get an image URL and then use recognizeText
       const canvas = document.querySelector('canvas');
       if (!canvas) {
         setError("Canvas not found. Please try again.");
