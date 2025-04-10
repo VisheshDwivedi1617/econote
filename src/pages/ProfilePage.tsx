@@ -1,139 +1,140 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
-import { 
-  User, Mail, Phone, MapPin, Calendar, BookOpen, 
-  Edit, Save, Upload, LogOut, Check, ArrowLeft
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/components/ui/use-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { 
+  User, Settings, Bell, Shield, PenTool, Cloud, 
+  Download, Upload, FileText, BarChart, Pencil 
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTheme } from "@/hooks/use-theme";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { theme } = useTheme();
   const isMobile = useIsMobile();
-  const [editMode, setEditMode] = useState(false);
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   
-  const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
+  // User profile state
+  const [user, setUser] = useState({
+    name: "Jane Doe",
+    email: "jane.doe@example.com",
+    bio: "Physics student passionate about taking organized notes. EcoNote helps me stay organized and eco-friendly with my digital notes.",
+    avatar: "/lovable-uploads/f4922f7f-b535-43b2-95c5-dd0d26787fc1.png",
     location: "San Francisco, CA",
-    bio: "I'm a student who loves taking notes and organizing my thoughts. EcoNote helps me capture my ideas and study efficiently.",
-    joinDate: "January 2024",
-    profession: "Student",
-    website: "johndoe.com",
-    usageStats: {
-      notesCreated: 45,
-      totalPages: 120,
-      lastActive: "Today",
-      storageUsed: "23 MB"
+    occupation: "Student",
+    notifications: {
+      email: true,
+      push: true,
+      syncReminders: false,
+      weeklyDigest: true,
     },
-    preferences: {
-      theme: "system",
-      language: "English",
-      notificationEnabled: true,
-      autoSaveInterval: 5
-    }
+    privacy: {
+      publicProfile: false,
+      shareNotes: false,
+      dataCollection: true,
+    },
+    penSettings: {
+      autoPairOnStartup: true,
+      hapticFeedback: true,
+      pressureSensitivity: 8,
+    },
+    cloudSettings: {
+      autoSync: true,
+      syncOnWifiOnly: true,
+      backupFrequency: "daily",
+    },
   });
   
-  // Store editable profile data
-  const [editableProfile, setEditableProfile] = useState({ ...profile });
-  
-  useEffect(() => {
-    // Load profile from localStorage if available
-    const savedProfile = localStorage.getItem("userProfile");
-    if (savedProfile) {
-      setProfile(JSON.parse(savedProfile));
-      setEditableProfile(JSON.parse(savedProfile));
-    }
-    
-    // Load avatar from localStorage if available
-    const savedAvatar = localStorage.getItem("userAvatar");
-    if (savedAvatar) {
-      setAvatar(savedAvatar);
-    }
-  }, []);
-  
-  const handleEditToggle = () => {
-    if (editMode) {
-      // Save changes
-      setProfile(editableProfile);
-      localStorage.setItem("userProfile", JSON.stringify(editableProfile));
-      
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      });
-    }
-    
-    setEditMode(!editMode);
+  // Stats
+  const stats = {
+    totalNotes: 56,
+    totalPages: 124,
+    notesThisMonth: 12,
+    wordsWritten: "12,450",
+    syncedDevices: 3,
+    savedPaper: "124 sheets",
   };
   
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setEditableProfile(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setIsUploading(true);
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageDataUrl = event.target?.result as string;
-      setAvatar(imageDataUrl);
-      localStorage.setItem("userAvatar", imageDataUrl);
-      setIsUploading(false);
-      
-      toast({
-        title: "Avatar Updated",
-        description: "Your profile picture has been updated.",
-      });
-    };
-    
-    reader.onerror = () => {
-      setIsUploading(false);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload the image. Please try again.",
-        variant: "destructive",
-      });
-    };
-    
-    reader.readAsDataURL(file);
-  };
-  
-  const handleLogout = () => {
     toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
+      title: "Profile updated",
+      description: "Your profile has been updated successfully.",
     });
-    
-    navigate("/");
+  };
+  
+  // Handle notification setting changes
+  const handleNotificationChange = (setting: keyof typeof user.notifications, value: boolean) => {
+    setUser({
+      ...user,
+      notifications: {
+        ...user.notifications,
+        [setting]: value,
+      },
+    });
+  };
+  
+  // Handle privacy setting changes
+  const handlePrivacyChange = (setting: keyof typeof user.privacy, value: boolean) => {
+    setUser({
+      ...user,
+      privacy: {
+        ...user.privacy,
+        [setting]: value,
+      },
+    });
+  };
+  
+  // Handle pen setting changes
+  const handlePenSettingChange = (setting: keyof typeof user.penSettings, value: boolean | number) => {
+    setUser({
+      ...user,
+      penSettings: {
+        ...user.penSettings,
+        [setting]: value,
+      },
+    });
+  };
+  
+  // Handle cloud setting changes
+  const handleCloudSettingChange = (setting: keyof typeof user.cloudSettings, value: boolean | string) => {
+    setUser({
+      ...user,
+      cloudSettings: {
+        ...user.cloudSettings,
+        [setting]: value,
+      },
+    });
   };
   
   return (
@@ -143,329 +144,519 @@ const ProfilePage = () => {
       <div className="flex flex-1 overflow-hidden">
         {!isMobile && <Sidebar />}
         
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          {/* Back button for mobile */}
-          {isMobile && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="mb-4" 
-              onClick={() => navigate(-1)}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          )}
-          
-          <div className="max-w-4xl mx-auto">
-            <Card className="mb-6">
-              <CardHeader className="relative pb-0">
-                <div className="absolute right-4 top-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleEditToggle}
-                    className="flex items-center gap-2"
-                  >
-                    {editMode ? (
-                      <>
-                        <Save className="h-4 w-4" />
-                        <span>Save</span>
-                      </>
-                    ) : (
-                      <>
-                        <Edit className="h-4 w-4" />
-                        <span>Edit</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
-                  <div className="relative">
-                    <Avatar className="h-24 w-24 border-2 border-primary">
-                      <AvatarImage src={avatar || undefined} alt={profile.name} />
-                      <AvatarFallback className="text-2xl">
-                        {profile.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    {editMode && (
-                      <label 
-                        htmlFor="avatar-upload" 
-                        className="absolute bottom-0 right-0 bg-primary text-white p-1 rounded-full cursor-pointer"
+        <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold">My Profile</h1>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate(-1)}
+              >
+                Back
+              </Button>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Profile Summary Card */}
+              <Card className="md:w-1/3">
+                <CardHeader className="text-center">
+                  <div className="flex flex-col items-center">
+                    <div className="relative">
+                      <Avatar className="w-24 h-24">
+                        <AvatarImage src={user.avatar} alt={user.name} />
+                        <AvatarFallback>
+                          {user.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Button 
+                        className="absolute bottom-0 right-0 rounded-full h-8 w-8 p-0"
+                        variant="secondary"
+                        size="icon"
                       >
-                        <input 
-                          id="avatar-upload" 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden"
-                          onChange={handleAvatarUpload}
-                          disabled={isUploading}
-                        />
-                        <Upload className="h-4 w-4" />
-                      </label>
-                    )}
-                  </div>
-                  
-                  <div className="text-center md:text-left">
-                    {editMode ? (
-                      <Input
-                        name="name"
-                        value={editableProfile.name}
-                        onChange={handleInputChange}
-                        className="text-2xl font-bold mb-1"
-                      />
-                    ) : (
-                      <h2 className="text-2xl font-bold">{profile.name}</h2>
-                    )}
-                    
-                    {editMode ? (
-                      <Input
-                        name="profession"
-                        value={editableProfile.profession}
-                        onChange={handleInputChange}
-                        className="text-sm text-muted-foreground mb-2"
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{profile.profession}</p>
-                    )}
-                    
-                    <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                      <Button variant="outline" size="sm" className="text-xs">
-                        <BookOpen className="h-3 w-3 mr-1" />
-                        {profile.usageStats.notesCreated} Notes
-                      </Button>
-                      <Button variant="outline" size="sm" className="text-xs">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        Since {profile.joinDate}
+                        <Pencil className="h-4 w-4" />
                       </Button>
                     </div>
+                    <CardTitle className="mt-4">{user.name}</CardTitle>
+                    <CardDescription>{user.occupation} • {user.location}</CardDescription>
                   </div>
-                </div>
-              </CardHeader>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Bio</h3>
+                      <p className="mt-1 text-sm">{user.bio}</p>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Stats</h3>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium">Total Notes</p>
+                          <p className="text-xl font-bold">{stats.totalNotes}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Total Pages</p>
+                          <p className="text-xl font-bold">{stats.totalPages}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Words Written</p>
+                          <p className="text-xl font-bold">{stats.wordsWritten}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Paper Saved</p>
+                          <p className="text-xl font-bold">{stats.savedPaper}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                  <Button className="w-full">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Your Data
+                  </Button>
+                </CardFooter>
+              </Card>
               
-              <CardContent className="mt-6">
-                <Tabs defaultValue="about" className="w-full">
-                  <TabsList className="w-full justify-start mb-4">
-                    <TabsTrigger value="about">About</TabsTrigger>
-                    <TabsTrigger value="stats">Statistics</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
+              {/* Settings Tabs */}
+              <div className="flex-1">
+                <Tabs defaultValue="account">
+                  <TabsList className="mb-4 w-full md:w-auto grid grid-cols-4 md:flex h-auto md:h-10">
+                    <TabsTrigger value="account" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <User className="h-4 w-4 mr-2 md:mr-1" />
+                      <span className="hidden md:inline">Account</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="notifications" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <Bell className="h-4 w-4 mr-2 md:mr-1" />
+                      <span className="hidden md:inline">Notifications</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="pen" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <PenTool className="h-4 w-4 mr-2 md:mr-1" />
+                      <span className="hidden md:inline">Pen Settings</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="privacy" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <Shield className="h-4 w-4 mr-2 md:mr-1" />
+                      <span className="hidden md:inline">Privacy</span>
+                    </TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="about">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Bio</h3>
-                        {editMode ? (
-                          <Textarea
-                            name="bio"
-                            value={editableProfile.bio}
-                            onChange={handleInputChange}
-                            rows={4}
-                            className="resize-none"
+                  {/* Account Settings */}
+                  <TabsContent value="account">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Account Information</CardTitle>
+                        <CardDescription>
+                          Update your account details and preferences.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label htmlFor="name">Full Name</Label>
+                              <Input 
+                                id="name" 
+                                value={user.name}
+                                onChange={(e) => setUser({...user, name: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="email">Email</Label>
+                              <Input 
+                                id="email" 
+                                type="email" 
+                                value={user.email}
+                                onChange={(e) => setUser({...user, email: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="location">Location</Label>
+                              <Input 
+                                id="location" 
+                                value={user.location}
+                                onChange={(e) => setUser({...user, location: e.target.value})}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="occupation">Occupation</Label>
+                              <Input 
+                                id="occupation" 
+                                value={user.occupation}
+                                onChange={(e) => setUser({...user, occupation: e.target.value})}
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="bio">Bio</Label>
+                            <Textarea 
+                              id="bio" 
+                              rows={4}
+                              value={user.bio}
+                              onChange={(e) => setUser({...user, bio: e.target.value})}
+                            />
+                          </div>
+                        </form>
+                      </CardContent>
+                      <CardFooter className="flex justify-between">
+                        <Button variant="outline">Cancel</Button>
+                        <Button onClick={handleSubmit}>Save Changes</Button>
+                      </CardFooter>
+                    </Card>
+                    
+                    <Card className="mt-6">
+                      <CardHeader>
+                        <CardTitle>Cloud Sync</CardTitle>
+                        <CardDescription>
+                          Configure how your notes sync with the cloud.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Auto Sync</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Automatically sync notes across devices
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.cloudSettings.autoSync}
+                            onCheckedChange={(checked) => 
+                              handleCloudSettingChange("autoSync", checked)
+                            }
                           />
-                        ) : (
-                          <p className="text-sm text-muted-foreground">{profile.bio}</p>
-                        )}
-                      </div>
-                      
-                      <Separator />
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h3 className="text-sm font-medium mb-2">Contact Information</h3>
-                          <ul className="space-y-2">
-                            <li className="flex items-center gap-2 text-sm">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              {editMode ? (
-                                <Input
-                                  name="email"
-                                  value={editableProfile.email}
-                                  onChange={handleInputChange}
-                                  type="email"
-                                />
-                              ) : (
-                                <span>{profile.email}</span>
-                              )}
-                            </li>
-                            <li className="flex items-center gap-2 text-sm">
-                              <Phone className="h-4 w-4 text-muted-foreground" />
-                              {editMode ? (
-                                <Input
-                                  name="phone"
-                                  value={editableProfile.phone}
-                                  onChange={handleInputChange}
-                                  type="tel"
-                                />
-                              ) : (
-                                <span>{profile.phone}</span>
-                              )}
-                            </li>
-                            <li className="flex items-center gap-2 text-sm">
-                              <MapPin className="h-4 w-4 text-muted-foreground" />
-                              {editMode ? (
-                                <Input
-                                  name="location"
-                                  value={editableProfile.location}
-                                  onChange={handleInputChange}
-                                />
-                              ) : (
-                                <span>{profile.location}</span>
-                              )}
-                            </li>
-                            <li className="flex items-center gap-2 text-sm">
-                              <Globe className="h-4 w-4 text-muted-foreground" />
-                              {editMode ? (
-                                <Input
-                                  name="website"
-                                  value={editableProfile.website}
-                                  onChange={handleInputChange}
-                                  type="url"
-                                />
-                              ) : (
-                                <span>{profile.website}</span>
-                              )}
-                            </li>
-                          </ul>
                         </div>
                         
-                        <div>
-                          <h3 className="text-sm font-medium mb-2">Account Information</h3>
-                          <ul className="space-y-2">
-                            <li className="flex items-center gap-2 text-sm">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span>Basic Plan</span>
-                            </li>
-                            <li className="flex items-center gap-2 text-sm">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span>Member since {profile.joinDate}</span>
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="stats">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">Activity</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <dl className="space-y-2">
-                            <div className="flex justify-between">
-                              <dt className="text-sm font-medium">Notes Created</dt>
-                              <dd className="text-sm">{profile.usageStats.notesCreated}</dd>
-                            </div>
-                            <div className="flex justify-between">
-                              <dt className="text-sm font-medium">Total Pages</dt>
-                              <dd className="text-sm">{profile.usageStats.totalPages}</dd>
-                            </div>
-                            <div className="flex justify-between">
-                              <dt className="text-sm font-medium">Last Active</dt>
-                              <dd className="text-sm">{profile.usageStats.lastActive}</dd>
-                            </div>
-                          </dl>
-                        </CardContent>
-                      </Card>
-                      
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base">Storage</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="flex justify-between">
-                              <span className="text-sm font-medium">Used Storage</span>
-                              <span className="text-sm">{profile.usageStats.storageUsed}</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                              <div className="bg-green-600 h-2.5 rounded-full" style={{ width: '15%' }}></div>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              You're using 15% of your available storage
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="settings">
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-sm font-medium mb-4">Notification Settings</h3>
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Enable Notifications</p>
+                          <div className="space-y-0.5">
+                            <Label>Sync on Wi-Fi Only</Label>
                             <p className="text-sm text-muted-foreground">
-                              Receive notifications about updates and activity
+                              Only sync when connected to Wi-Fi
                             </p>
                           </div>
-                          <div>
-                            <Button 
-                              variant={profile.preferences.notificationEnabled ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => {
-                                if (editMode) {
-                                  setEditableProfile(prev => ({
-                                    ...prev,
-                                    preferences: {
-                                      ...prev.preferences,
-                                      notificationEnabled: !prev.preferences.notificationEnabled
-                                    }
-                                  }));
-                                }
-                              }}
-                              disabled={!editMode}
-                            >
-                              {profile.preferences.notificationEnabled ? (
-                                <Check className="h-4 w-4 mr-1" />
-                              ) : null}
-                              {profile.preferences.notificationEnabled ? "Enabled" : "Disabled"}
-                            </Button>
+                          <Switch 
+                            checked={user.cloudSettings.syncOnWifiOnly}
+                            onCheckedChange={(checked) => 
+                              handleCloudSettingChange("syncOnWifiOnly", checked)
+                            }
+                            disabled={!user.cloudSettings.autoSync}
+                          />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <Label htmlFor="backupFrequency">Backup Frequency</Label>
+                          <select
+                            id="backupFrequency"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={user.cloudSettings.backupFrequency}
+                            onChange={(e) => handleCloudSettingChange("backupFrequency", e.target.value)}
+                          >
+                            <option value="hourly">Hourly</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="manual">Manual Only</option>
+                          </select>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button variant="outline" className="w-full">
+                          <Cloud className="h-4 w-4 mr-2" />
+                          Force Sync Now
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </TabsContent>
+                  
+                  {/* Notifications Settings */}
+                  <TabsContent value="notifications">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Notification Preferences</CardTitle>
+                        <CardDescription>
+                          Choose what notifications you want to receive.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Email Notifications</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Receive notifications via email
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.notifications.email}
+                            onCheckedChange={(checked) => 
+                              handleNotificationChange("email", checked)
+                            }
+                          />
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Push Notifications</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Receive push notifications on your devices
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.notifications.push}
+                            onCheckedChange={(checked) => 
+                              handleNotificationChange("push", checked)
+                            }
+                          />
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Sync Reminders</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Get reminders to sync your notes
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.notifications.syncReminders}
+                            onCheckedChange={(checked) => 
+                              handleNotificationChange("syncReminders", checked)
+                            }
+                          />
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Weekly Digest</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Receive a weekly summary of your notes
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.notifications.weeklyDigest}
+                            onCheckedChange={(checked) => 
+                              handleNotificationChange("weeklyDigest", checked)
+                            }
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                  
+                  {/* Pen Settings */}
+                  <TabsContent value="pen">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Pen & Writing Settings</CardTitle>
+                        <CardDescription>
+                          Configure your digital pen and writing preferences.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Auto-Pair on Startup</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Automatically connect to paired pens when app opens
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.penSettings.autoPairOnStartup}
+                            onCheckedChange={(checked) => 
+                              handlePenSettingChange("autoPairOnStartup", checked)
+                            }
+                          />
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Haptic Feedback</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Enable haptic feedback when using digital pen
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.penSettings.hapticFeedback}
+                            onCheckedChange={(checked) => 
+                              handlePenSettingChange("hapticFeedback", checked)
+                            }
+                          />
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Pressure Sensitivity</Label>
+                            <span className="text-sm font-medium">
+                              {user.penSettings.pressureSensitivity}/10
+                            </span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="1" 
+                            max="10" 
+                            value={user.penSettings.pressureSensitivity}
+                            onChange={(e) => 
+                              handlePenSettingChange("pressureSensitivity", parseInt(e.target.value))
+                            }
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                          />
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>Light</span>
+                            <span>Heavy</span>
                           </div>
                         </div>
-                      </div>
-                      
-                      <Separator />
-                      
-                      <div>
-                        <h3 className="text-sm font-medium mb-4">Account Actions</h3>
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="outline" size="sm" className="text-blue-600">
-                            Change Password
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={handleLogout}
-                          >
-                            <LogOut className="h-4 w-4 mr-1" />
-                            Log Out
+                        
+                        <Separator />
+                        
+                        <div className="pt-2">
+                          <Button variant="outline" className="w-full">
+                            <PenTool className="h-4 w-4 mr-2" />
+                            Calibrate Pen
                           </Button>
                         </div>
-                      </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Connected Devices</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <PenTool className="h-4 w-4 text-blue-500" />
+                                <span className="text-sm">Smart Pen Pro</span>
+                              </div>
+                              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded dark:bg-green-800 dark:text-green-100">
+                                Connected
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <PenTool className="h-4 w-4 text-purple-500" />
+                                <span className="text-sm">Wacom Stylus</span>
+                              </div>
+                              <span className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded dark:bg-gray-700 dark:text-gray-200">
+                                Paired
+                              </span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">Quick Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <Button variant="outline" size="sm" className="w-full justify-start">
+                            <Cloud className="h-4 w-4 mr-2" />
+                            Sync All Devices
+                          </Button>
+                          <Button variant="outline" size="sm" className="w-full justify-start">
+                            <Download className="h-4 w-4 mr-2" />
+                            Install Firmware Update
+                          </Button>
+                        </CardContent>
+                      </Card>
                     </div>
+                  </TabsContent>
+                  
+                  {/* Privacy Settings */}
+                  <TabsContent value="privacy">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Privacy & Security</CardTitle>
+                        <CardDescription>
+                          Manage your privacy settings and data preferences.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Public Profile</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Allow others to see your profile information
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.privacy.publicProfile}
+                            onCheckedChange={(checked) => 
+                              handlePrivacyChange("publicProfile", checked)
+                            }
+                          />
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Note Sharing</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Allow notes to be shareable with others
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.privacy.shareNotes}
+                            onCheckedChange={(checked) => 
+                              handlePrivacyChange("shareNotes", checked)
+                            }
+                          />
+                        </div>
+                        
+                        <Separator />
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Usage Data Collection</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Allow anonymous usage data to improve EcoNote
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={user.privacy.dataCollection}
+                            onCheckedChange={(checked) => 
+                              handlePrivacyChange("dataCollection", checked)
+                            }
+                          />
+                        </div>
+                      </CardContent>
+                      <CardFooter className="flex flex-col space-y-2">
+                        <Button variant="outline" className="w-full">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Your Data
+                        </Button>
+                        <Button variant="destructive" className="w-full">
+                          Delete Account
+                        </Button>
+                      </CardFooter>
+                    </Card>
                   </TabsContent>
                 </Tabs>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
-      {/* Render Sidebar for mobile as a floating button/menu */}
+      {/* Mobile Sidebar */}
       {isMobile && (
         <Sidebar className="hidden" />
       )}
     </div>
   );
 };
-
-// Import the Globe icon to complete the component
-import { Globe } from "lucide-react";
 
 export default ProfilePage;

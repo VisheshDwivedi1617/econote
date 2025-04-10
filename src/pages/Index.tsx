@@ -12,7 +12,7 @@ import TextConversionPanel from "@/components/ocr/TextConversionPanel";
 import ExportPanel from "@/components/export/ExportPanel";
 import CameraScanner from "@/components/scanner/CameraScanner";
 import { Button } from "@/components/ui/button";
-import { Camera } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useNotebook } from "@/contexts/NotebookContext";
 import { OCRLanguage } from "@/services/OCRService";
@@ -86,6 +86,19 @@ const Index = () => {
       });
     }
   };
+
+  // Handle file upload for images
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageDataUrl = e.target?.result as string;
+      handleCapturedImage(imageDataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
   
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -111,24 +124,48 @@ const Index = () => {
         </div>
       </div>
       
-      {/* Fixed positions for buttons - adjust for mobile */}
-      <div className="fixed bottom-28 right-6 z-10 flex flex-col gap-4">
+      {/* Fixed positions for buttons - adjust for mobile to avoid overlap */}
+      <div className={`fixed ${isMobile ? 'bottom-36 right-4' : 'bottom-28 right-6'} z-10`}>
         <PenStatus onPenData={handlePenData} />
       </div>
       
-      {/* Scan button - position differently for mobile */}
-      <div className={`fixed ${isMobile ? 'bottom-16 right-4' : 'bottom-6 right-6'} z-10`}>
-        <Button 
-          onClick={() => setShowCameraScanner(true)}
-          className={`rounded-full ${isMobile ? 'h-12 w-12' : 'h-14 w-14'} bg-green-600 hover:bg-green-700 shadow-lg`}
-        >
-          <Camera className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
-        </Button>
-      </div>
-      
-      {/* AI toolbar positioned at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-10">
-        <AIToolbar />
+      {/* Image upload and camera buttons */}
+      <div className="fixed bottom-0 right-0 p-4 space-y-4 z-20">
+        {/* AI Toolbar - moved to bottom left */}
+        <div className={`fixed ${isMobile ? 'bottom-0 left-0 right-0' : 'bottom-0 left-0 right-0'} z-10`}>
+          <AIToolbar />
+        </div>
+        
+        {/* Camera button - repositioned to avoid overlap */}
+        <div className={`fixed ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'} z-10`}>
+          <Button 
+            onClick={() => setShowCameraScanner(true)}
+            className={`rounded-full ${isMobile ? 'h-12 w-12' : 'h-14 w-14'} bg-green-600 hover:bg-green-700 shadow-lg`}
+          >
+            <Camera className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
+          </Button>
+        </div>
+        
+        {/* File upload button */}
+        <div className={`fixed ${isMobile ? 'bottom-20 right-20' : 'bottom-6 right-24'} z-10`}>
+          <label htmlFor="image-upload">
+            <Button 
+              className={`rounded-full ${isMobile ? 'h-12 w-12' : 'h-14 w-14'} bg-blue-600 hover:bg-blue-700 shadow-lg cursor-pointer`}
+              asChild
+            >
+              <div>
+                <Upload className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
+              </div>
+            </Button>
+          </label>
+          <input 
+            id="image-upload" 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            onChange={handleFileUpload} 
+          />
+        </div>
       </div>
       
       {showWelcome && (

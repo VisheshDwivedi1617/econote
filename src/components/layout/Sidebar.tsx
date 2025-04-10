@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -30,6 +31,12 @@ interface Folder {
   pages: string[];
 }
 
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
 type SidebarSection = {
   title: string;
   items: {
@@ -39,6 +46,7 @@ type SidebarSection = {
     id?: string;
     path?: string;
     folderId?: string;
+    tagId?: string;
   }[];
 };
 
@@ -64,8 +72,14 @@ const Sidebar = ({ className }: SidebarProps) => {
   const [isNewTagDialogOpen, setIsNewTagDialogOpen] = useState(false);
   const [noteCounter, setNoteCounter] = useState(1);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [folderNameError, setFolderNameError] = useState("");
+  const [tagNameError, setTagNameError] = useState("");
+  
+  // Refs for input elements
+  const folderNameInputRef = useRef<HTMLInputElement>(null);
+  const tagNameInputRef = useRef<HTMLInputElement>(null);
 
   const isMobile = useIsMobile();
 
@@ -76,7 +90,18 @@ const Sidebar = ({ className }: SidebarProps) => {
     }
     
     loadFolders();
+    loadTags();
   }, []);
+
+  // Focus input on dialog open
+  useEffect(() => {
+    if (isNewFolderDialogOpen && folderNameInputRef.current) {
+      setTimeout(() => folderNameInputRef.current?.focus(), 100);
+    }
+    if (isNewTagDialogOpen && tagNameInputRef.current) {
+      setTimeout(() => tagNameInputRef.current?.focus(), 100);
+    }
+  }, [isNewFolderDialogOpen, isNewTagDialogOpen]);
 
   const loadFolders = () => {
     const storedFolders = localStorage.getItem("folders");
@@ -85,9 +110,30 @@ const Sidebar = ({ className }: SidebarProps) => {
     }
   };
 
+  const loadTags = () => {
+    const storedTags = localStorage.getItem("tags");
+    if (storedTags) {
+      setTags(JSON.parse(storedTags));
+    } else {
+      // Default tags
+      const defaultTags: Tag[] = [
+        { id: "1", name: "Work", color: "#3b82f6" },
+        { id: "2", name: "Personal", color: "#10b981" },
+        { id: "3", name: "Ideas", color: "#8b5cf6" }
+      ];
+      localStorage.setItem("tags", JSON.stringify(defaultTags));
+      setTags(defaultTags);
+    }
+  };
+
   const saveFolders = (newFolders: Folder[]) => {
     localStorage.setItem("folders", JSON.stringify(newFolders));
     setFolders(newFolders);
+  };
+
+  const saveTags = (newTags: Tag[]) => {
+    localStorage.setItem("tags", JSON.stringify(newTags));
+    setTags(newTags);
   };
 
   const incrementNoteCounter = () => {
@@ -197,15 +243,27 @@ const Sidebar = ({ className }: SidebarProps) => {
   };
 
   const handleAddTag = () => {
+    setTagNameError("");
+    
     if (!newTagName.trim()) {
-      toast({
-        title: "Error",
-        description: "Tag name cannot be empty",
-        variant: "destructive",
-      });
+      setTagNameError("Tag name cannot be empty");
+      return;
+    }
+    
+    if (newTagName.trim().length < 2) {
+      setTagNameError("Tag name must be at least 2 characters");
       return;
     }
 
+    const newTag: Tag = {
+      id: Date.now().toString(),
+      name: newTagName.trim(),
+      color: newTagColor
+    };
+    
+    const updatedTags = [...tags, newTag];
+    saveTags(updatedTags);
+    
     toast({
       title: "Tag created",
       description: `New tag "${newTagName}" has been created`,
@@ -248,11 +306,15 @@ const Sidebar = ({ className }: SidebarProps) => {
     }
   };
 
-  const handleTagClick = (tagName: string) => {
-    toast({
-      title: "Tag Selected",
-      description: `Viewing notes with "${tagName}" tag`,
-    });
+  const handleTagClick = (tagId: string) => {
+    const tag = tags.find(t => t.id === tagId);
+    
+    if (tag) {
+      toast({
+        title: "Tag Selected",
+        description: `Viewing notes with "${tag.name}" tag`,
+      });
+    }
     
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
@@ -320,11 +382,11 @@ const Sidebar = ({ className }: SidebarProps) => {
     },
     {
       title: "Tags",
-      items: [
-        { name: "Work", icon: <Tag className="h-4 w-4 text-blue-500" /> },
-        { name: "Personal", icon: <Tag className="h-4 w-4 text-green-500" /> },
-        { name: "Ideas", icon: <Tag className="h-4 w-4 text-purple-500" /> },
-      ],
+      items: tags.map(tag => ({
+        name: tag.name,
+        icon: <Tag className="h-4 w-4" style={{ color: tag.color }} />,
+        tagId: tag.id
+      }))
     },
   ];
 
@@ -359,7 +421,7 @@ const Sidebar = ({ className }: SidebarProps) => {
               <div className="mt-1 space-y-1">
                 {section.items.map((item) => (
                   <Button
-                    key={`${section.title}-${item.name}${item.id || ""}${item.folderId || ""}`}
+                    key={`${section.title}-${item.name}${item.id || ""}${item.folderId || ""}${item.tagId || ""}`}
                     variant={item.active ? "secondary" : "ghost"}
                     className="w-full justify-start gap-2 text-sm"
                     onClick={() => {
@@ -369,14 +431,14 @@ const Sidebar = ({ className }: SidebarProps) => {
                         handleNavigate(item.path);
                       } else if (item.folderId) {
                         handleFolderClick(item.folderId);
+                      } else if (item.tagId) {
+                        handleTagClick(item.tagId);
                       } else if (item.name === "Starred") {
                         handleStarredClick();
                       } else if (item.name === "Archive") {
                         handleArchiveClick();
                       } else if (item.name === "Trash") {
                         handleTrashClick();
-                      } else if (section.title === "Tags") {
-                        handleTagClick(item.name);
                       }
                     }}
                   >
@@ -411,6 +473,7 @@ const Sidebar = ({ className }: SidebarProps) => {
                               value={newFolderName}
                               onChange={(e) => setNewFolderName(e.target.value)}
                               className={folderNameError ? "border-red-500" : ""}
+                              ref={folderNameInputRef}
                             />
                             {folderNameError && (
                               <p className="text-red-500 text-sm mt-1">{folderNameError}</p>
@@ -445,12 +508,18 @@ const Sidebar = ({ className }: SidebarProps) => {
                           <Label htmlFor="tagName" className="text-right">
                             Name
                           </Label>
-                          <Input
-                            id="tagName"
-                            value={newTagName}
-                            onChange={(e) => setNewTagName(e.target.value)}
-                            className="col-span-3"
-                          />
+                          <div className="col-span-3">
+                            <Input
+                              id="tagName"
+                              value={newTagName}
+                              onChange={(e) => setNewTagName(e.target.value)}
+                              className={tagNameError ? "border-red-500" : ""}
+                              ref={tagNameInputRef}
+                            />
+                            {tagNameError && (
+                              <p className="text-red-500 text-sm mt-1">{tagNameError}</p>
+                            )}
+                          </div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                           <Label htmlFor="tagColor" className="text-right">

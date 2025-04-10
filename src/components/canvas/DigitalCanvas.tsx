@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Undo, Redo, PenTool, Eraser, Download, 
   ZoomIn, ZoomOut, Hand, Maximize2, Trash2,
-  ChevronLeft, ChevronRight, Save
+  ChevronLeft, ChevronRight, Pencil, Smartphone
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
-  const [tool, setTool] = useState<"pen" | "eraser" | "hand">("pen");
+  const [tool, setTool] = useState<"pen" | "finger" | "eraser" | "hand">("pen");
   const [color, setColor] = useState("#000000");
   const [lineWidth, setLineWidth] = useState(2);
   const [scale, setScale] = useState(1);
@@ -143,7 +143,7 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     ctx.stroke();
   };
   
-  // Drawing event handlers
+  // Drawing event handlers for mouse
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool === "hand") return; // Don't draw if in pan mode
     
@@ -204,6 +204,75 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     }
   };
   
+  // Touch events for mobile finger drawing
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (tool !== "finger" || !canvasRef.current) return;
+    
+    e.preventDefault(); // Prevent scrolling
+    
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = (touch.clientX - rect.left) / scale;
+    const y = (touch.clientY - rect.top) / scale;
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    
+    // Start a new stroke
+    const newStroke: PenStroke = {
+      points: [{ x, y, pressure: 1, timestamp: Date.now() }],
+      color: color,
+      width: lineWidth,
+      id: Date.now().toString()
+    };
+    
+    // Add to strokes
+    addStroke(newStroke);
+    setRedoStack([]); // Clear redo stack on new drawing
+    
+    setIsDrawing(true);
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || tool !== "finger" || !canvasRef.current) return;
+    
+    e.preventDefault(); // Prevent scrolling
+    
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = (touch.clientX - rect.left) / scale;
+    const y = (touch.clientY - rect.top) / scale;
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    
+    // Update the current stroke
+    const updatedStrokes = [...strokes];
+    const currentStroke = updatedStrokes[updatedStrokes.length - 1];
+    
+    if (currentStroke) {
+      currentStroke.points.push({ 
+        x, y, pressure: 1, timestamp: Date.now() 
+      });
+      updateStrokes(updatedStrokes);
+    }
+  };
+  
+  const handleTouchEnd = () => {
+    setIsDrawing(false);
+  };
+  
   const stopDrawing = () => {
     setIsDrawing(false);
   };
@@ -239,9 +308,16 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
     setScale(prev => Math.max(prev - 0.1, 0.5));
   };
   
-  const handleToolChange = (newTool: "pen" | "eraser" | "hand") => {
+  const handleToolChange = (newTool: "pen" | "finger" | "eraser" | "hand") => {
     setTool(newTool);
     setIsErasing(newTool === "eraser");
+    
+    if (newTool === "finger") {
+      toast({
+        title: "Finger drawing mode",
+        description: "Use your finger to draw directly on the canvas",
+      });
+    }
   };
   
   const handleClear = () => {
@@ -337,7 +413,7 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
   
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <div className="bg-white border-b border-gray-200 p-2 flex justify-between items-center">
+      <div className="bg-white border-b border-gray-200 p-2 flex justify-between items-center overflow-x-auto">
         <div className="flex items-center space-x-1">
           <Button
             variant={tool === "pen" ? "secondary" : "ghost"}
@@ -346,6 +422,14 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
             title="Pen"
           >
             <PenTool className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={tool === "finger" ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => handleToolChange("finger")}
+            title="Finger Drawing"
+          >
+            <Smartphone className="h-4 w-4" />
           </Button>
           <Button
             variant={tool === "eraser" ? "secondary" : "ghost"}
@@ -404,6 +488,7 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
             <option value="1">Thin</option>
             <option value="2">Medium</option>
             <option value="4">Thick</option>
+            <option value="8">Very Thick</option>
           </select>
         </div>
         
@@ -469,24 +554,6 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
           >
             <Download className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Fullscreen"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-          
-          <div className="h-4 border-r border-gray-300 mx-1 hidden sm:block" />
-          
-          <Button 
-            variant="ghost"
-            size="sm"
-            className="hidden sm:flex items-center gap-1 text-pen-primary"
-            onClick={simulateRealTimeInput}
-          >
-            <span className="text-xs">Simulate Pen</span>
-          </Button>
         </div>
       </div>
       
@@ -497,11 +564,14 @@ const DigitalCanvas = ({ className }: DigitalCanvasProps) => {
         >
           <canvas
             ref={canvasRef}
-            className="bg-white shadow-md"
+            className="bg-white shadow-md touch-none"
             onMouseDown={startDrawing}
             onMouseMove={draw}
             onMouseUp={stopDrawing}
             onMouseLeave={stopDrawing}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           />
         </div>
       </div>
