@@ -16,6 +16,7 @@ import { Camera } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useNotebook } from "@/contexts/NotebookContext";
 import { OCRLanguage } from "@/services/OCRService";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const Index = () => {
   const [showUtilityPanels, setShowUtilityPanels] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const { createScannedPage } = useNotebook();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     // Show welcome tutorial the first time only
@@ -90,7 +92,7 @@ const Index = () => {
       <Navbar />
       
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        {!isMobile && <Sidebar />}
         
         <div className="flex-1 flex flex-col">
           <NoteHeader />
@@ -100,7 +102,7 @@ const Index = () => {
             
             {/* OCR and Export Panels */}
             {showUtilityPanels && (
-              <div className="p-4 space-y-2">
+              <div className={`p-2 sm:p-4 space-y-2 ${isMobile ? 'max-h-[40vh] overflow-y-auto' : ''}`}>
                 <TextConversionPanel />
                 <ExportPanel />
               </div>
@@ -110,12 +112,12 @@ const Index = () => {
       </div>
       
       {/* Floating "Scan Note" button */}
-      <div className="fixed bottom-24 right-6 z-10">
+      <div className={`fixed ${isMobile ? 'bottom-16 right-4' : 'bottom-24 right-6'} z-10`}>
         <Button 
           onClick={() => setShowCameraScanner(true)}
-          className="rounded-full h-14 w-14 bg-green-600 hover:bg-green-700 shadow-lg"
+          className={`rounded-full ${isMobile ? 'h-12 w-12' : 'h-14 w-14'} bg-green-600 hover:bg-green-700 shadow-lg`}
         >
-          <Camera className="h-6 w-6" />
+          <Camera className={`${isMobile ? 'h-5 w-5' : 'h-6 w-6'}`} />
         </Button>
       </div>
       
@@ -132,6 +134,11 @@ const Index = () => {
         onOpenChange={setShowCameraScanner}
         onCapture={handleCapturedImage}
       />
+      
+      {/* Render Sidebar for mobile as a floating button/menu */}
+      {isMobile && (
+        <Sidebar className="hidden" />
+      )}
     </div>
   );
 };

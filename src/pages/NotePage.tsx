@@ -10,6 +10,7 @@ import StudyModeView from "@/components/study/StudyModeView";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, BookOpen } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const NotePage = () => {
   const { noteId } = useParams<{ noteId: string }>();
@@ -19,6 +20,7 @@ const NotePage = () => {
   const [pageTitle, setPageTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [showStudyMode, setShowStudyMode] = useState(false);
+  const isMobile = useIsMobile();
   
   // Load the note when the component mounts or noteId changes
   useEffect(() => {
@@ -119,10 +121,10 @@ const NotePage = () => {
     <div className="flex flex-col h-screen">
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
+        {!isMobile && <Sidebar />}
         <div className="flex-1 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between p-2 sm:p-4 border-b">
+            <div className="flex items-center gap-2 w-full sm:w-auto mb-2 sm:mb-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -135,12 +137,12 @@ const NotePage = () => {
                 type="text"
                 value={pageTitle}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                className="text-xl font-semibold bg-transparent border-none focus:outline-none focus:ring-0"
+                className="text-lg sm:text-xl font-semibold bg-transparent border-none focus:outline-none focus:ring-0 w-full sm:w-auto"
                 placeholder="Untitled Note"
               />
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -148,7 +150,7 @@ const NotePage = () => {
                 onClick={handleSave}
               >
                 <Save className="h-4 w-4" />
-                Save
+                <span className={isMobile ? "hidden" : "inline"}>Save</span>
               </Button>
               
               <Button
@@ -158,7 +160,7 @@ const NotePage = () => {
                 onClick={openStudyMode}
               >
                 <BookOpen className="h-4 w-4" />
-                Study Mode
+                <span className={isMobile ? "hidden" : "inline"}>Study Mode</span>
               </Button>
             </div>
           </div>
@@ -171,7 +173,7 @@ const NotePage = () => {
             <div className="flex-1 overflow-auto">
               {isScannedNote ? (
                 // Display scanned note image with OCR capabilities
-                <div className="p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
+                <div className="p-2 sm:p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
                   <ScannedNoteView 
                     imageData={currentPage.imageData!} 
                     pageId={currentPage.id}
@@ -194,6 +196,11 @@ const NotePage = () => {
           open={showStudyMode}
           onOpenChange={setShowStudyMode}
         />
+      )}
+      
+      {/* Mobile sidebar */}
+      {isMobile && (
+        <Sidebar className="hidden" />
       )}
     </div>
   );
