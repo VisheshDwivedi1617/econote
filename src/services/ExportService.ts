@@ -1,5 +1,6 @@
 
 import { jsPDF } from 'jspdf';
+import { NotePage } from './StorageService';
 
 interface ExportOptions {
   filename?: string;
@@ -8,11 +9,13 @@ interface ExportOptions {
   includeMetadata?: boolean;
 }
 
+// Updated Page interface to be compatible with NotePage
 interface Page {
   id: string;
   title: string;
-  content: string;
+  content?: string;  // Make content optional
   strokes?: any[];
+  ocrText?: string;  // Add OCR text as an alternative content source
 }
 
 class ExportService {
@@ -100,7 +103,7 @@ class ExportService {
   /**
    * Export multiple pages to a document
    */
-  exportDocument = async (pages: Page[], title: string, format: string): Promise<string> => {
+  exportDocument = async (pages: NotePage[] | Page[], title: string, format: string): Promise<string> => {
     try {
       const filename = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
       
@@ -120,7 +123,7 @@ class ExportService {
   /**
    * Export pages to PDF
    */
-  private exportPagesToPDF = (pages: Page[], filename: string): string => {
+  private exportPagesToPDF = (pages: NotePage[] | Page[], filename: string): string => {
     // Create PDF with standard dimensions
     const pdf = new jsPDF();
     
@@ -134,12 +137,18 @@ class ExportService {
       pdf.setFontSize(16);
       pdf.text(page.title, 20, 20);
       
-      // Add the page content
+      // Add the page content - use ocrText if available, otherwise use content if available
       pdf.setFontSize(12);
       
+      // Get content from either ocrText or content property
+      const pageContent = ('ocrText' in page && page.ocrText) ? 
+        page.ocrText : 
+        ('content' in page && page.content) ? 
+          page.content : 
+          '';
+      
       // Simple text wrapping
-      const content = page.content || '';
-      const textLines = pdf.splitTextToSize(content, 170);
+      const textLines = pdf.splitTextToSize(pageContent, 170);
       pdf.text(textLines, 20, 40);
     });
     
@@ -152,12 +161,19 @@ class ExportService {
   /**
    * Export pages to DOCX (simplified implementation)
    */
-  private exportPagesToDocx = (pages: Page[], filename: string): string => {
+  private exportPagesToDocx = (pages: NotePage[] | Page[], filename: string): string => {
     // In a real implementation, we would use a library like docx.js
     // For now, we'll just create a text file with the contents
     
     const content = pages.map(page => {
-      return `# ${page.title}\n\n${page.content || ''}\n\n`;
+      // Get content from either ocrText or content property
+      const pageContent = ('ocrText' in page && page.ocrText) ? 
+        page.ocrText : 
+        ('content' in page && page.content) ? 
+          page.content : 
+          '';
+          
+      return `# ${page.title}\n\n${pageContent}\n\n`;
     }).join('---\n\n');
     
     // Create text blob
