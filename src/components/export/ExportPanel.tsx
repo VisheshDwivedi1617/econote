@@ -18,8 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import ExportService, { ExportFormat } from "@/services/ExportService";
+import ExportService from "@/services/ExportService";
 import { useNotebook } from "@/contexts/NotebookContext";
+import StorageService from "@/services/StorageService";
+
+// Define the export format type locally
+type ExportFormat = 'png' | 'jpg' | 'pdf' | 'docx' | 'svg';
 
 const ExportPanel = () => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -39,7 +43,7 @@ const ExportPanel = () => {
       switch (exportFormat) {
         case 'png':
         case 'jpg':
-          await ExportService.exportImage(strokes, exportFormat, filename);
+          await ExportService.export(strokes, exportFormat, filename);
           break;
           
         case 'pdf':
@@ -51,16 +55,16 @@ const ExportPanel = () => {
                 return page!;
               })
             );
-            await ExportService.exportPDF(pages.filter(Boolean), currentNotebook.title);
+            await ExportService.exportDocument(pages.filter(Boolean), currentNotebook.title, 'pdf');
           } else {
             // Just export current page if no notebook
-            await ExportService.exportPDF([currentPage], filename);
+            await ExportService.exportDocument([currentPage], filename, 'pdf');
           }
           break;
           
         case 'docx':
           // This would integrate with a DOCX library in a real implementation
-          await ExportService.exportDOCX([currentPage], [], filename);
+          await ExportService.exportDocument([currentPage], filename, 'docx');
           break;
           
         default:
@@ -172,8 +176,5 @@ const ExportPanel = () => {
     </div>
   );
 };
-
-// Import StorageService to resolve reference
-import StorageService from "@/services/StorageService";
 
 export default ExportPanel;

@@ -188,9 +188,9 @@ const NotePage = () => {
       </div>
       
       {/* Study Mode Dialog */}
-      {currentPage && (
+      {currentPage && noteId && (
         <StudyModeView
-          page={currentPage}
+          noteId={noteId}
           open={showStudyMode}
           onOpenChange={setShowStudyMode}
         />

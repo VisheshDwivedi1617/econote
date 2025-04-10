@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -8,10 +9,15 @@ import { Flashcard } from "@/models/StudyModels";
 import FlashcardView from "@/components/study/FlashcardView";
 import QuizView from "@/components/study/QuizView";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 
 interface StudyModeViewProps {
   noteId: string;
-  onBack: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 interface StudyModeViewState {
@@ -70,7 +76,7 @@ class StudyModeView extends React.Component<StudyModeViewProps, StudyModeViewSta
   };
   
   handleBack = () => {
-    this.props.onBack();
+    this.props.onOpenChange(false);
   };
   
   generateFlashcards = async () => {
@@ -208,7 +214,7 @@ renderContent() {
     return this.renderQuiz();
   } else {
     // Try to get content in a safe way
-    const content = currentNote.content || "";
+    const content = currentNote.content || currentNote.text || currentNote.data?.content || "";
     
     if (!content || content.trim() === '') {
       return (
@@ -259,9 +265,13 @@ renderContent() {
 
   render() {
     return (
-      <div className="flex flex-col h-full">
-        {this.renderContent()}
-      </div>
+      <Dialog open={this.props.open} onOpenChange={this.props.onOpenChange}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
+          <div className="flex-1 flex flex-col h-full overflow-auto">
+            {this.renderContent()}
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   }
 }
