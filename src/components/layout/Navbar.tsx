@@ -21,11 +21,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Navbar = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const handleSync = () => {
     toast({
@@ -42,6 +44,10 @@ const Navbar = () => {
     navigate('/');
   };
   
+  const handleProfile = () => {
+    navigate('/profile');
+  };
+  
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
     toast({
@@ -51,7 +57,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-white dark:bg-gray-800 dark:border-gray-700">
+    <nav className="flex justify-between items-center border-b border-gray-200 px-4 sm:px-6 py-4 bg-white dark:bg-gray-800 dark:border-gray-700">
       <div className="flex items-center space-x-2 cursor-pointer" onClick={handleHome}>
         <img 
           src="/lovable-uploads/f4922f7f-b535-43b2-95c5-dd0d26787fc1.png" 
@@ -62,21 +68,21 @@ const Navbar = () => {
             filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0) invert(0)'
           }}
         />
-        <span className="text-xl font-semibold text-pen-dark dark:text-white">EcoNote</span>
+        <span className="text-xl font-semibold text-pen-dark dark:text-white hidden sm:inline">EcoNote</span>
       </div>
       
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 sm:space-x-4">
         <Button 
           variant="outline" 
           size="sm" 
-          className="flex items-center gap-2"
+          className="flex items-center gap-1 sm:gap-2"
           onClick={handleSync}
         >
           <CloudUpload className="h-4 w-4" />
           <span className="hidden sm:inline">Sync</span>
         </Button>
         
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
@@ -117,7 +123,7 @@ const Navbar = () => {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleProfile}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>

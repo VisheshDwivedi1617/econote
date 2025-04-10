@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-// New folder interface
 interface Folder {
   id: string;
   name: string;
@@ -67,17 +65,16 @@ const Sidebar = ({ className }: SidebarProps) => {
   const [noteCounter, setNoteCounter] = useState(1);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+  const [folderNameError, setFolderNameError] = useState("");
+
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Load note counter from localStorage
     const savedCounter = localStorage.getItem("noteCounter");
     if (savedCounter) {
       setNoteCounter(parseInt(savedCounter, 10));
     }
     
-    // Load folders from localStorage
     loadFolders();
   }, []);
 
@@ -113,7 +110,6 @@ const Sidebar = ({ className }: SidebarProps) => {
       const title = `NewNote_${counter}`;
       const newPage = await createPage(title);
       
-      // If a folder was specified, add the note to that folder
       if (folderId) {
         const updatedFolders = folders.map(folder => {
           if (folder.id === folderId) {
@@ -137,10 +133,8 @@ const Sidebar = ({ className }: SidebarProps) => {
         });
       }
       
-      // Navigate to the new note
       navigate(`/note/${newPage.id}`);
       
-      // Close the mobile menu if it's open
       if (mobileMenuOpen) {
         setMobileMenuOpen(false);
       }
@@ -154,38 +148,39 @@ const Sidebar = ({ className }: SidebarProps) => {
       });
     }
   };
-  
+
   const handleNoteClick = (pageId: string) => {
     navigate(`/note/${pageId}`);
     
-    // Close the mobile menu if it's open
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
   };
-  
+
   const handleNavigate = (path: string) => {
     navigate(path);
     
-    // Close the mobile menu if it's open
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
   };
 
   const handleAddFolder = () => {
+    setFolderNameError("");
+    
     if (!newFolderName.trim()) {
-      toast({
-        title: "Error",
-        description: "Folder name cannot be empty",
-        variant: "destructive",
-      });
+      setFolderNameError("Folder name cannot be empty");
+      return;
+    }
+    
+    if (newFolderName.trim().length < 2) {
+      setFolderNameError("Folder name must be at least 2 characters");
       return;
     }
 
     const newFolder: Folder = {
       id: Date.now().toString(),
-      name: newFolderName,
+      name: newFolderName.trim(),
       pages: []
     };
     
@@ -226,7 +221,6 @@ const Sidebar = ({ className }: SidebarProps) => {
       description: "Viewing your starred notes",
     });
     
-    // Close the mobile menu if it's open
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
@@ -238,7 +232,6 @@ const Sidebar = ({ className }: SidebarProps) => {
       description: "Viewing your archived notes",
     });
     
-    // Close the mobile menu if it's open
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
@@ -250,7 +243,6 @@ const Sidebar = ({ className }: SidebarProps) => {
       description: "Viewing your deleted notes",
     });
     
-    // Close the mobile menu if it's open
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
@@ -262,31 +254,30 @@ const Sidebar = ({ className }: SidebarProps) => {
       description: `Viewing notes with "${tagName}" tag`,
     });
     
-    // Close the mobile menu if it's open
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
   };
 
   const handleFolderClick = (folderId: string) => {
-    // For simplicity, we'll just show a toast for now
     const folder = folders.find(f => f.id === folderId);
     
-    toast({
-      title: "Folder Selected",
-      description: `Viewing notes in "${folder?.name}" folder`,
-    });
+    if (folder) {
+      if (folder.pages.length > 0) {
+        navigate(`/note/${folder.pages[0]}`);
+      } else {
+        toast({
+          title: "Empty Folder",
+          description: `Folder "${folder.name}" is empty. Add a new note to get started.`,
+        });
+      }
+    }
     
-    // In a real implementation, you might navigate to a folder-specific view
-    // or filter the current view by folder
-    
-    // Close the mobile menu if it's open
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);
     }
   };
 
-  // Get recent notes from the current notebook (safely handle undefined)
   const recentNotes = currentNotebook?.pages ? 
     currentNotebook.pages.slice(0, 5).map(pageId => ({
       name: pageId,
@@ -414,12 +405,17 @@ const Sidebar = ({ className }: SidebarProps) => {
                           <Label htmlFor="folderName" className="text-right">
                             Name
                           </Label>
-                          <Input
-                            id="folderName"
-                            value={newFolderName}
-                            onChange={(e) => setNewFolderName(e.target.value)}
-                            className="col-span-3"
-                          />
+                          <div className="col-span-3">
+                            <Input
+                              id="folderName"
+                              value={newFolderName}
+                              onChange={(e) => setNewFolderName(e.target.value)}
+                              className={folderNameError ? "border-red-500" : ""}
+                            />
+                            {folderNameError && (
+                              <p className="text-red-500 text-sm mt-1">{folderNameError}</p>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <DialogFooter>
@@ -476,7 +472,6 @@ const Sidebar = ({ className }: SidebarProps) => {
                   </Dialog>
                 )}
                 
-                {/* Add New Note in Folder button for folder section */}
                 {section.title === "Folders" && section.items.length > 0 && (
                   section.items.map(folderItem => (
                     folderItem.folderId && (
@@ -503,7 +498,6 @@ const Sidebar = ({ className }: SidebarProps) => {
     </div>
   );
 
-  // If mobile, render sidebar in a Sheet component (slide-in menu)
   if (isMobile) {
     return (
       <>
@@ -538,7 +532,6 @@ const Sidebar = ({ className }: SidebarProps) => {
     );
   }
 
-  // Desktop version
   return (
     <div className={`w-64 border-r border-gray-200 h-[calc(100vh-64px)] bg-gray-50 py-4 overflow-y-auto dark:bg-gray-800 dark:border-gray-700 flex-shrink-0 ${className || ""}`}>
       <SidebarContent />

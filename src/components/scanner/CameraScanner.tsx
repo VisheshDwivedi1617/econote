@@ -1,10 +1,9 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, X, CheckCircle, RefreshCw, Smartphone } from "lucide-react";
+import { Camera, X, CheckCircle, RefreshCw, Smartphone, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { useNotebook } from "@/contexts/NotebookContext";
 import { detectEdges, enhanceImage } from "@/services/ImageProcessingService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import OCRService, { OCRLanguage } from "@/services/OCRService";
@@ -40,7 +39,12 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   
   useEffect(() => {
     if (open) {
-      initializeCamera();
+      // Short delay before initializing camera to ensure the dialog is fully rendered
+      const timer = setTimeout(() => {
+        initializeCamera();
+      }, 500);
+      
+      return () => clearTimeout(timer);
     } else {
       stopCamera();
       setCapturedImage(null);
@@ -57,6 +61,8 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
       setCameraError(null);
       setUsingFileUpload(false);
       
+      console.log("Attempting to initialize camera...");
+      
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.log("Camera API not supported, falling back to file upload");
         setCameraError("Camera API is not supported in your browser");
@@ -65,47 +71,34 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
         return;
       }
       
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      // First try with ideal settings
+      // Try with simpler constraints first to improve compatibility
       try {
-        const constraints: MediaStreamConstraints = {
-          video: isMobileDevice ? {
-            facingMode: { exact: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          } : {
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        };
-        
-        console.log("Attempting to access camera with constraints:", JSON.stringify(constraints));
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("Attempting with basic constraints");
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: true,
+          audio: false
+        });
         
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          setIsCameraReady(true);
-          setHasPermission(true);
+          videoRef.current.onloadedmetadata = () => {
+            if (videoRef.current) {
+              videoRef.current.play().then(() => {
+                console.log("Camera stream playing successfully");
+                setIsCameraReady(true);
+                setHasPermission(true);
+              }).catch(err => {
+                console.error("Error playing video:", err);
+                setCameraError("Could not start video stream");
+              });
+            }
+          };
         }
       } catch (error) {
-        console.log("Failed with first attempt, trying simpler constraints");
-        
-        try {
-          // Try with very basic constraints if the first attempt failed
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            setIsCameraReady(true);
-            setHasPermission(true);
-          }
-        } catch (finalError) {
-          console.error("All camera access attempts failed:", finalError);
-          setCameraError("Could not access your camera. Please check permissions.");
-          setUsingFileUpload(true);
-          setHasPermission(false);
-        }
+        console.error("All camera access attempts failed:", error);
+        setCameraError("Could not access your camera. Please check permissions.");
+        setUsingFileUpload(true);
+        setHasPermission(false);
       }
     } catch (error) {
       console.error("Error in camera initialization:", error);
@@ -116,11 +109,15 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
   };
   
   const stopCamera = () => {
+    console.log("Stopping camera stream");
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       const tracks = stream.getTracks();
       
-      tracks.forEach(track => track.stop());
+      tracks.forEach(track => {
+        console.log("Stopping track:", track.kind);
+        track.stop();
+      });
       videoRef.current.srcObject = null;
     }
     
@@ -133,6 +130,18 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     const video = videoRef.current;
     const canvas = canvasRef.current;
     
+    console.log("Capturing image from stream", video.videoWidth, video.videoHeight);
+    
+    // If video dimensions are 0, something is wrong with the stream
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      toast({
+        title: "Error",
+        description: "Cannot capture image. Video stream not ready.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
@@ -141,21 +150,32 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
     
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    const imageDataUrl = canvas.toDataURL("image/jpeg");
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
     setCapturedImage(imageDataUrl);
     stopCamera();
+    
+    console.log("Image captured successfully");
   };
   
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
+    console.log("File selected:", file.name, file.type);
+    
     const reader = new FileReader();
     reader.onload = (e) => {
       const imageDataUrl = e.target?.result as string;
       setCapturedImage(imageDataUrl);
+      console.log("File loaded as data URL");
     };
     reader.readAsDataURL(file);
+  };
+  
+  const openFileDialog = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
   
   const retakePhoto = () => {
@@ -292,18 +312,18 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
                 className="hidden"
                 id="image-upload"
               />
-              <label 
-                htmlFor="image-upload" 
+              <Button
+                onClick={openFileDialog}
                 className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <Camera className="w-12 h-12 mb-2 text-gray-400" />
+                <Upload className="w-12 h-12 mb-2 text-gray-400" />
                 <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                  <span className="font-semibold">Click to upload</span> or drag and drop
+                  <span className="font-semibold">Click to upload</span>
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   PNG, JPG or JPEG
                 </p>
-              </label>
+              </Button>
               
               <div className="mt-4">
                 <Button 
@@ -324,16 +344,23 @@ const CameraScanner: React.FC<CameraScannerProps> = ({
             <>
               {!capturedImage ? (
                 <div className="relative w-full">
-                  <video 
-                    ref={videoRef}
-                    autoPlay 
-                    playsInline
-                    className="w-full rounded-md border border-gray-300 dark:border-gray-700"
-                    style={{ display: isCameraReady ? 'block' : 'none' }}
-                    onCanPlay={() => setIsCameraReady(true)}
-                  />
-                  
-                  <div className="absolute inset-0 border-2 border-dashed border-green-500 m-6 pointer-events-none" />
+                  <div className="relative bg-black rounded-md overflow-hidden">
+                    <video 
+                      ref={videoRef}
+                      autoPlay 
+                      playsInline
+                      className="w-full rounded-md border border-gray-300 dark:border-gray-700"
+                      style={{ display: isCameraReady ? 'block' : 'none' }}
+                    />
+                    
+                    {!isCameraReady && (
+                      <div className="w-full h-64 flex items-center justify-center bg-gray-900">
+                        <p className="text-white">Initializing camera...</p>
+                      </div>
+                    )}
+                    
+                    <div className="absolute inset-0 border-2 border-dashed border-green-500 m-6 pointer-events-none" />
+                  </div>
                   
                   <div className="mt-4 mb-2 flex justify-center">
                     <Button 

@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import NotePage from "./pages/NotePage";
 import AllNotesPage from "./pages/AllNotesPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/note/:noteId" element={<NotePage />} />
               <Route path="/notes" element={<AllNotesPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
