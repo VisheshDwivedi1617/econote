@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
@@ -26,7 +25,7 @@ import CalibrationTool from "@/components/calibration/CalibrationTool";
 const Settings = () => {
   const navigate = useNavigate();
   const [showCalibration, setShowCalibration] = useState(false);
-  const [ocrLanguage, setOcrLanguage] = useState<OCRLanguage>('en');
+  const [ocrLanguage, setOcrLanguage] = useState<OCRLanguage>('eng');
   const [realtimeSync, setRealtimeSync] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
   const [penBattery, setPenBattery] = useState(85); // Would come from pen service

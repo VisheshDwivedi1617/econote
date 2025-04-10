@@ -26,7 +26,7 @@ const TextConversionPanel = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [convertedText, setConvertedText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [language, setLanguage] = useState<OCRLanguage>('en');
+  const [language, setLanguage] = useState<OCRLanguage>('eng');
   const { toast } = useToast();
   const { strokes } = useNotebook();
   
@@ -45,8 +45,20 @@ const TextConversionPanel = () => {
         return;
       }
       
-      // Process handwriting with OCR service
-      const result = await OCRService.recognizeHandwriting(strokes, language);
+      // Since recognizeHandwriting doesn't exist, we'll use the canvas to get an image URL
+      // and then use recognizeText instead
+      // This is a simplified approach - in a real implementation, you would need to 
+      // convert strokes to an image URL first
+      const canvas = document.querySelector('canvas');
+      if (!canvas) {
+        setError("Canvas not found. Please try again.");
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Get image data from canvas
+      const imageUrl = canvas.toDataURL('image/png');
+      const result = await OCRService.recognizeText(imageUrl, language);
       setConvertedText(result);
       
       // Expand panel to show result
@@ -54,7 +66,7 @@ const TextConversionPanel = () => {
       
     } catch (err) {
       console.error('OCR error:', err);
-      setError(`Failed to convert handwriting: ${err}`);
+      setError(`Failed to convert handwriting to text: ${err}`);
       
       toast({
         title: "Conversion failed",

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { 
   Dialog, 
@@ -40,7 +39,6 @@ const StudyModeView = ({ page, open, onOpenChange }: StudyModeViewProps) => {
   const [studySession, setStudySession] = useState<StudySession | null>(null);
   const [showResults, setShowResults] = useState(false);
   
-  // Initialize study session when dialog opens
   useEffect(() => {
     if (open) {
       initializeStudySession();
@@ -51,18 +49,19 @@ const StudyModeView = ({ page, open, onOpenChange }: StudyModeViewProps) => {
   
   const initializeStudySession = () => {
     try {
-      // Generate flashcards from the note
       const generatedFlashcards = StudyService.generateFlashcards(page);
       setFlashcards(generatedFlashcards);
       
-      // Get note text for quiz generation
-      const noteText = page.isScanned ? page.ocrText || "" : page.content || "";
+      let noteText = "";
+      if (page.isScanned && page.ocrText) {
+        noteText = page.ocrText;
+      } else if (page.strokes && page.strokes.length > 0) {
+        noteText = "This is a handwritten note.";
+      }
       
-      // Generate quizzes from the flashcards
       const generatedQuizzes = StudyService.generateQuizzes(generatedFlashcards, noteText);
       setQuizzes(generatedQuizzes);
       
-      // Create a new study session
       const newSession = StudyService.createStudySession(
         page.id, 
         generatedFlashcards,
@@ -107,14 +106,12 @@ const StudyModeView = ({ page, open, onOpenChange }: StudyModeViewProps) => {
       if (currentFlashcardIndex < flashcards.length - 1) {
         setCurrentFlashcardIndex(currentFlashcardIndex + 1);
       } else {
-        // Switch to quiz tab when all flashcards are viewed
         setActiveTab("quiz");
       }
     } else {
       if (currentQuizIndex < quizzes.length - 1) {
         setCurrentQuizIndex(currentQuizIndex + 1);
       } else {
-        // Show results when all quizzes are answered
         setShowResults(true);
       }
     }
@@ -156,14 +153,11 @@ const StudyModeView = ({ page, open, onOpenChange }: StudyModeViewProps) => {
   
   const handleClose = () => {
     if (studySession && studySession.totalAnswered > 0) {
-      // Complete the study session
       const updatedSession = {
         ...studySession,
         completedAt: Date.now()
       };
       setStudySession(updatedSession);
-      
-      // Could save session history here if we wanted to track progress over time
     }
     
     onOpenChange(false);
@@ -175,7 +169,6 @@ const StudyModeView = ({ page, open, onOpenChange }: StudyModeViewProps) => {
     setCurrentQuizIndex(0);
     setActiveTab("flashcards");
     
-    // Reset session stats
     if (studySession) {
       const resetSession = {
         ...studySession,

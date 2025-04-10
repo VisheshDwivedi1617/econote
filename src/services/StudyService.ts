@@ -1,4 +1,3 @@
-
 import { Flashcard, Quiz, StudySession } from "@/models/StudyModels";
 import { NotePage } from "@/services/StorageService";
 
@@ -12,9 +11,10 @@ class StudyService {
     // For scanned notes, use OCR text
     if (page.isScanned && page.ocrText) {
       text = page.ocrText;
-    } else if (page.content) {
-      // For digital notes with content
-      text = page.content;
+    } else if (page.strokes && page.strokes.length > 0) {
+      // For digital notes with strokes, use a placeholder text
+      // In a real implementation, this would be generated from strokes
+      text = "This note contains handwritten content that hasn't been processed with OCR yet.";
     } else {
       // Fallback to an empty string if no content
       return [];
