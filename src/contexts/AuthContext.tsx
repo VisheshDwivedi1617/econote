@@ -35,19 +35,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // Skip Supabase initialization if not configured
     if (!isSupabaseReady) {
       setLoading(false);
       return;
     }
 
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         
         if (currentSession?.user) {
-          // Use setTimeout to avoid potential deadlocks
           setTimeout(async () => {
             try {
               const { data, error } = await supabase
@@ -59,7 +56,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (!error && data) {
                 setUser(data);
               } else if (error && error.code !== 'PGRST116') {
-                // PGRST116 is the error for no rows returned
                 console.error('Error fetching user profile:', error);
               }
             } catch (err) {
@@ -72,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
     
-    // THEN check for existing session
     const initializeAuth = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
