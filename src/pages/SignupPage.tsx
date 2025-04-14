@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail, Lock, Eye, EyeOff, User, Check, X } from 'lucide-react';
+import { Loader2, Mail, Lock, Eye, EyeOff, User, Check, X, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SignupPage = () => {
   const [email, setEmail] = useState('');
@@ -16,7 +16,7 @@ const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { signUp, user } = useAuth();
+  const { signUp, user, isSupabaseReady } = useAuth();
   const { theme } = useTheme();
   
   // Password strength criteria
@@ -34,6 +34,10 @@ const SignupPage = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isSupabaseReady) {
+      return;
+    }
     
     if (!passwordsMatch || !hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumber) {
       return;
@@ -75,6 +79,19 @@ const SignupPage = () => {
               Sign up to start your note-taking journey
             </CardDescription>
           </CardHeader>
+          
+          {!isSupabaseReady && (
+            <div className="px-6 pb-4">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Supabase Configuration Missing</AlertTitle>
+                <AlertDescription>
+                  Please set up the Supabase environment variables to enable authentication.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -89,6 +106,7 @@ const SignupPage = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
                     required
+                    disabled={!isSupabaseReady}
                   />
                 </div>
               </div>
@@ -105,12 +123,14 @@ const SignupPage = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
                     required
+                    disabled={!isSupabaseReady}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2"
                     tabIndex={-1}
+                    disabled={!isSupabaseReady}
                   >
                     {showPassword ? 
                       <EyeOff className="h-4 w-4 text-gray-500" /> : 
@@ -119,7 +139,6 @@ const SignupPage = () => {
                   </button>
                 </div>
                 
-                {/* Password strength indicators */}
                 <div className="space-y-1 mt-2 text-xs">
                   <div className="flex items-center space-x-2">
                     {hasMinLength ? 
@@ -164,6 +183,7 @@ const SignupPage = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className={`pl-10 ${!passwordsMatch && confirmPassword ? 'border-red-500' : ''}`}
                     required
+                    disabled={!isSupabaseReady}
                   />
                 </div>
                 {confirmPassword && !passwordsMatch && (
@@ -175,7 +195,7 @@ const SignupPage = () => {
               <Button 
                 type="submit"
                 className="w-full bg-pen-primary hover:bg-pen-dark"
-                disabled={isLoading || !passwordsMatch || !hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumber}
+                disabled={isLoading || !passwordsMatch || !hasMinLength || !hasUpperCase || !hasLowerCase || !hasNumber || !isSupabaseReady}
               >
                 {isLoading ? (
                   <>

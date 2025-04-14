@@ -20,8 +20,28 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
+
+// Component to handle public routes with Supabase readiness check
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading, isSupabaseReady } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-pen-primary" />
+      </div>
+    );
+  }
+  
+  // Always show the children for public routes, even if Supabase isn't configured
+  return <>{children}</>;
+};
+
+// Import the Loader2 icon
+import { Loader2 } from "lucide-react";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,11 +54,11 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 {/* Public routes */}
-                <Route path="/welcome" element={<WelcomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/welcome" element={<PublicRoute><WelcomePage /></PublicRoute>} />
+                <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+                <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+                <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+                <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
                 
                 {/* Protected routes */}
                 <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
@@ -60,3 +80,4 @@ const App = () => (
 );
 
 export default App;
+
