@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useNotebook } from "@/contexts/NotebookContext";
 import { OCRLanguage } from "@/services/OCRService";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -26,6 +27,15 @@ const Index = () => {
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const { createScannedPage } = useNotebook();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  
+  // If the user is not authenticated, they should be redirected by ProtectedRoute
+  // But we'll add this check as an extra safety measure
+  useEffect(() => {
+    if (!user) {
+      navigate('/welcome');
+    }
+  }, [user, navigate]);
   
   useEffect(() => {
     // Show welcome tutorial the first time only

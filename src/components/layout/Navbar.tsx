@@ -1,7 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CloudUpload, User, Settings, BellRing } from "lucide-react";
+import { CloudUpload, User, Settings, BellRing, LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { 
@@ -22,13 +22,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Navbar = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
-
+  const { user, signOut } = useAuth();
+  
   const handleSync = () => {
     toast({
       title: "Syncing",
@@ -54,6 +57,24 @@ const Navbar = () => {
       title: "Theme Changed",
       description: `Switched to ${theme === 'light' ? 'dark' : 'light'} mode`,
     });
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/welcome');
+  };
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user) return "?";
+    
+    if (user.first_name && user.last_name) {
+      return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
+    } else if (user.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    
+    return "?";
   };
 
   return (
@@ -115,12 +136,19 @@ const Navbar = () => {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full bg-pen-light dark:bg-gray-700">
-                <User className="h-5 w-5 text-pen-dark dark:text-gray-200" />
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar>
+                  <AvatarImage src={user?.avatar_url} />
+                  <AvatarFallback className="bg-pen-primary text-white">
+                    {getUserInitials()}
+                  </AvatarFallback>
+                </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.email}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={handleProfile}>
@@ -137,7 +165,8 @@ const Navbar = () => {
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
