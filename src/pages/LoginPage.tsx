@@ -1,19 +1,17 @@
 
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import LoginForm from '@/components/auth/LoginForm';
+import ErrorAlert from '@/components/auth/ErrorAlert';
+import EmailVerificationAlert from '@/components/auth/EmailVerificationAlert';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
@@ -97,112 +95,27 @@ const LoginPage = () => {
           
           {error && (
             <div className="px-6 pb-4">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <ErrorAlert errorMessage={error} />
             </div>
           )}
           
           {showEmailConfirmation && (
             <div className="px-6 pb-4">
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Email Verification Required</AlertTitle>
-                <AlertDescription>
-                  <p className="mb-2">Please check your email and click the verification link to activate your account.</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={resendConfirmationEmail}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                        Sending...
-                      </>
-                    ) : "Resend Verification Email"}
-                  </Button>
-                </AlertDescription>
-              </Alert>
+              <EmailVerificationAlert 
+                onResendEmail={resendConfirmationEmail}
+                isLoading={isLoading}
+              />
             </div>
           )}
           
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <Link 
-                    to="/forgot-password"
-                    className="text-xs text-pen-primary hover:text-pen-dark"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? 
-                      <EyeOff className="h-4 w-4 text-gray-500" /> : 
-                      <Eye className="h-4 w-4 text-gray-500" />
-                    }
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
-              <Button 
-                type="submit"
-                className="w-full bg-pen-primary hover:bg-pen-dark"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
-                ) : "Sign In"}
-              </Button>
-              <div className="text-center text-sm">
-                Don't have an account?{" "}
-                <Link to="/signup" className="text-pen-primary hover:text-pen-dark font-medium">
-                  Sign up
-                </Link>
-              </div>
-            </CardFooter>
-          </form>
+          <LoginForm
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+          />
         </Card>
       </main>
       

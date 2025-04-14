@@ -21,6 +21,7 @@ import { useToast } from "@/components/ui/use-toast";
 import ExportService from "@/services/ExportService";
 import { useNotebook } from "@/contexts/NotebookContext";
 import StorageService from "@/services/StorageService";
+import { Badge } from "@/components/ui/badge";
 
 // Define the export format type locally
 type ExportFormat = 'png' | 'jpg' | 'pdf' | 'docx' | 'svg';
@@ -105,17 +106,32 @@ const ExportPanel = () => {
     }
   };
   
+  // Format options with icons
+  const formatOptions = [
+    { value: 'png', label: 'PNG Image', icon: <FileImage className="h-4 w-4 mr-2" /> },
+    { value: 'jpg', label: 'JPG Image', icon: <FileImage className="h-4 w-4 mr-2" /> },
+    { value: 'pdf', label: 'PDF Document', icon: <File className="h-4 w-4 mr-2" /> },
+    { value: 'docx', label: 'Word Document', icon: <FileText className="h-4 w-4 mr-2" /> }
+  ];
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-4 overflow-hidden transition-all duration-200">
       <div 
-        className="p-4 cursor-pointer flex justify-between items-center"
+        className="p-4 cursor-pointer flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center">
-          <Download className="h-5 w-5 mr-2 text-green-500" />
-          <h3 className="font-medium text-gray-900 dark:text-gray-100">
-            Export Note
-          </h3>
+          <div className="bg-green-100 dark:bg-green-800 p-2 rounded-full mr-3">
+            <Download className="h-5 w-5 text-green-600 dark:text-green-300" />
+          </div>
+          <div>
+            <h3 className="font-medium text-gray-900 dark:text-gray-100">
+              Export Note
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Save your notes in different formats
+            </p>
+          </div>
         </div>
         <div>
           {isExpanded ? (
@@ -127,27 +143,37 @@ const ExportPanel = () => {
       </div>
       
       {isExpanded && (
-        <div className="p-4 pt-0 border-t border-gray-200 dark:border-gray-700">
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Select
-                value={exportFormat}
-                onValueChange={(val) => setExportFormat(val as ExportFormat)}
-              >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Format" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="png">PNG Image</SelectItem>
-                  <SelectItem value="jpg">JPG Image</SelectItem>
-                  <SelectItem value="pdf">PDF Document</SelectItem>
-                  <SelectItem value="docx">Word Document</SelectItem>
-                </SelectContent>
-              </Select>
+        <div className="p-5 pt-0 border-t border-gray-200 dark:border-gray-700 animate-accordion-down">
+          <div className="mt-4">
+            <div className="flex flex-col md:flex-row md:items-end gap-3 mb-3">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">
+                  Export Format
+                </label>
+                <Select
+                  value={exportFormat}
+                  onValueChange={(val) => setExportFormat(val as ExportFormat)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formatOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center">
+                          {option.icon}
+                          {option.label}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
               <Button
                 onClick={handleExport}
                 disabled={isExporting || !currentPage}
+                className="bg-green-600 hover:bg-green-700"
               >
                 {isExporting ? (
                   <>
@@ -163,13 +189,29 @@ const ExportPanel = () => {
               </Button>
             </div>
             
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              {exportFormat === 'pdf' 
-                ? "Exports all pages in the current notebook as a single PDF file."
-                : exportFormat === 'docx' 
-                ? "Exports with OCR text if available."
-                : `Exports the current page as a ${exportFormat.toUpperCase()} image.`}
-            </p>
+            <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 mt-3">
+              <div className="flex items-start">
+                <File className="h-4 w-4 mt-1 text-gray-500 mr-2" />
+                <div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                    Format Details
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    {exportFormat === 'pdf' 
+                      ? "Exports all pages in the current notebook as a single PDF file."
+                      : exportFormat === 'docx' 
+                      ? "Exports with OCR text if available for searchable documents."
+                      : `Exports the current page as a ${exportFormat.toUpperCase()} image.`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {currentNotebook && exportFormat === 'pdf' && (
+              <Badge className="mt-3 bg-blue-500">
+                Notebook export: {currentNotebook.pages.length} pages
+              </Badge>
+            )}
           </div>
         </div>
       )}
