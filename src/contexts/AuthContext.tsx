@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,7 +18,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string, resendConfirmation?: boolean) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updateProfile: (data: { first_name?: string; last_name?: string; avatar_url?: string }) => Promise<{ error: any }>;
@@ -144,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, resendConfirmation: boolean = false) => {
     if (!isSupabaseReady) {
       toast({
         title: 'Supabase not configured',
@@ -155,17 +156,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      if (resendConfirmation) {
+        // Resend confirmation email
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        
+        if (error) {
+          console.error("Error resending confirmation:", error);
+          return { error };
+        }
+        
+        toast({
+          title: 'Verification email sent',
+          description: 'Please check your email for the verification link',
+        });
+        
+        return { error: null };
+      }
+      
+      // Regular sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
-        toast({
-          title: 'Sign in failed',
-          description: error.message,
-          variant: 'destructive',
-        });
+        console.error("Sign in error:", error.message);
         return { error };
       }
       

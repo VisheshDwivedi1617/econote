@@ -6,14 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const navigate = useNavigate();
   const { signIn, user } = useAuth();
   const { theme } = useTheme();
@@ -26,15 +29,44 @@ const LoginPage = () => {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setShowEmailConfirmation(false);
     setIsLoading(true);
     
     const { error } = await signIn(email, password);
     
-    if (!error) {
-      navigate('/');
+    if (error) {
+      console.log("Login error:", error.message);
+      if (error.message.includes("Email not confirmed")) {
+        setShowEmailConfirmation(true);
+      } else if (error.message.includes("Invalid login credentials")) {
+        setError("The email or password you entered is incorrect.");
+      } else {
+        setError(error.message);
+      }
+      setIsLoading(false);
+      return;
     }
     
+    navigate('/');
     setIsLoading(false);
+  };
+
+  const resendConfirmationEmail = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await signIn(email, password, true);
+      if (error) {
+        setError(error.message);
+      } else {
+        setError(null);
+        setShowEmailConfirmation(true);
+      }
+    } catch (err) {
+      setError("Failed to resend confirmation email. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -62,6 +94,42 @@ const LoginPage = () => {
               Sign in to access your notes
             </CardDescription>
           </CardHeader>
+          
+          {error && (
+            <div className="px-6 pb-4">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+          
+          {showEmailConfirmation && (
+            <div className="px-6 pb-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Email Verification Required</AlertTitle>
+                <AlertDescription>
+                  <p className="mb-2">Please check your email and click the verification link to activate your account.</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={resendConfirmationEmail}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        Sending...
+                      </>
+                    ) : "Resend Verification Email"}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
