@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { Session } from '@supabase/supabase-js';
 
 type User = {
   id: string;
@@ -14,6 +14,7 @@ type User = {
 
 interface AuthContextType {
   user: User;
+  session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSupabaseReady, setIsSupabaseReady] = useState(isSupabaseConfigured());
   const { toast } = useToast();
@@ -39,12 +41,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Check active sessions and set the user
-    const getSession = async () => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
+          // Use setTimeout to avoid potential deadlocks
+          setTimeout(async () => {
+            try {
+              const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', currentSession.user.id)
+                .single();
+                
+              if (!error && data) {
+                setUser(data);
+              } else if (error && error.code !== 'PGRST116') {
+                // PGRST116 is the error for no rows returned
+                console.error('Error fetching user profile:', error);
+              }
+            } catch (err) {
+              console.error('Error in auth state change handler:', err);
+            }
+          }, 0);
+        } else {
+          setUser(null);
+        }
+      }
+    );
+    
+    // THEN check for existing session
+    const initializeAuth = async () => {
       try {
         const { data, error } = await supabase.auth.getSession();
         
         if (!error && data?.session) {
+          setSession(data.session);
+          
           const { data: userData, error: userError } = await supabase
             .from('profiles')
             .select('*')
@@ -53,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
           if (!userError) {
             setUser(userData);
-          } else {
+          } else if (userError.code !== 'PGRST116') {
             console.error('Error fetching user profile:', userError);
           }
         }
@@ -64,33 +99,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     
-    getSession();
-    
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (session) {
-          try {
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (!error) {
-              setUser(data);
-            }
-          } catch (err) {
-            console.error('Error fetching user profile after auth change:', err);
-          }
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
-    });
+    initializeAuth();
     
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, [isSupabaseReady]);
   
@@ -163,15 +175,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (data.user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-          
-        if (!profileError) {
-          setUser(profileData);
-        }
+        setTimeout(async () => {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (!profileError) {
+            setUser(profileData);
+          }
+        }, 0);
         
         toast({
           title: 'Welcome back!',
@@ -193,12 +207,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     if (!isSupabaseReady) {
       setUser(null);
+      setSession(null);
       return;
     }
 
     try {
       await supabase.auth.signOut();
       setUser(null);
+      setSession(null);
       toast({
         title: 'Signed out',
         description: 'You have been successfully signed out.',
@@ -341,6 +357,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
+        session,
         loading,
         signUp,
         signIn,
