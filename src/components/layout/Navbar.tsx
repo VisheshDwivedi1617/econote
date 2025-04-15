@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CloudUpload, User, Settings, BellRing, LogOut, Check } from "lucide-react";
@@ -48,7 +49,13 @@ const Navbar = () => {
       toast({
         title: "Sync Complete",
         description: "Your notes have been successfully synced",
-        icon: <Check className="h-4 w-4 text-green-500" />
+        // Remove the 'icon' property and instead use a custom component in description if needed
+        description: (
+          <div className="flex items-center">
+            <Check className="h-4 w-4 text-green-500 mr-2" />
+            <span>Your notes have been successfully synced</span>
+          </div>
+        )
       });
     } catch (error) {
       console.error("Sync error:", error);
