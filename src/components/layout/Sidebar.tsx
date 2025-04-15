@@ -1,10 +1,11 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   FileText, FolderPlus, BookOpen, Tag, Star, 
   Archive, Trash2, PenTool, ChevronRight, ChevronDown,
-  Plus, Folder, Menu, X
+  Plus, Folder, Menu, X, Loader2
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
