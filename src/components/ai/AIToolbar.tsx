@@ -100,66 +100,53 @@ const AIToolbar = () => {
   // For mobile view, we'll use a dropdown in the navbar
   if (isMobile) {
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Popover open={isOpen} onOpenChange={setIsOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full"
-                >
-                  <Bot className="h-4 w-4 text-blue-500" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-0" align="end" sideOffset={5}>
-                <AIActions />
-              </PopoverContent>
-            </Popover>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>AI Tools</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <div>
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+            >
+              <Bot className="h-4 w-4 text-blue-500" />
+              <span className="sr-only">AI Tools</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0" align="end" sideOffset={5}>
+            <AIActions />
+          </PopoverContent>
+        </Popover>
+      </div>
     );
   }
   
   // For desktop, return a component that is placed in the navbar
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-              >
-                <Sparkles className="h-4 w-4 text-blue-500" />
-                <span>AI Tools</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 p-0" align="end">
-              <div className="p-3 border-b">
-                <h3 className="font-medium">AI Assistants</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Transform your notes with AI-powered tools
-                </p>
-              </div>
-              <div className="p-2">
-                <AIActions />
-              </div>
-            </PopoverContent>
-          </Popover>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>AI Tools</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+          >
+            <Sparkles className="h-4 w-4 text-blue-500" />
+            <span>AI Tools</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-60 p-0" align="end">
+          <div className="p-3 border-b">
+            <h3 className="font-medium">AI Assistants</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Transform your notes with AI-powered tools
+            </p>
+          </div>
+          <div className="p-2">
+            <AIActions />
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 };
 

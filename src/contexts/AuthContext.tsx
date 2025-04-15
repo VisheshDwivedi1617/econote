@@ -28,7 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,12 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        setSession(currentSession);
-        
-        if (currentSession?.user) {
-          setTimeout(async () => {
+    // Fix: Use setTimeout to ensure this code runs after React has fully initialized
+    setTimeout(() => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, currentSession) => {
+          setSession(currentSession);
+          
+          if (currentSession?.user) {
             try {
               const { data, error } = await supabase
                 .from('profiles')
@@ -62,44 +63,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch (err) {
               console.error('Error in auth state change handler:', err);
             }
-          }, 0);
-        } else {
-          setUser(null);
-        }
-      }
-    );
-    
-    const initializeAuth = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (!error && data?.session) {
-          setSession(data.session);
-          
-          const { data: userData, error: userError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.session.user.id)
-            .single();
-            
-          if (!userError) {
-            setUser(userData);
-          } else if (userError.code !== 'PGRST116') {
-            console.error('Error fetching user profile:', userError);
+          } else {
+            setUser(null);
           }
         }
-      } catch (err) {
-        console.error('Error checking session:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    initializeAuth();
-    
-    return () => {
-      subscription.unsubscribe();
-    };
+      );
+      
+      const initializeAuth = async () => {
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (!error && data?.session) {
+            setSession(data.session);
+            
+            const { data: userData, error: userError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.session.user.id)
+              .single();
+              
+            if (!userError) {
+              setUser(userData);
+            } else if (userError.code !== 'PGRST116') {
+              console.error('Error fetching user profile:', userError);
+            }
+          }
+        } catch (err) {
+          console.error('Error checking session:', err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      initializeAuth();
+      
+      return () => {
+        subscription?.unsubscribe();
+      };
+    }, 0);
   }, [isSupabaseReady]);
   
   const signUp = async (email: string, password: string) => {
