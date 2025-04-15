@@ -1,215 +1,197 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { CloudUpload, User, Settings, BellRing, LogOut, Check } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useTheme } from "@/hooks/use-theme";
-import { useState } from "react";
+
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { 
+  LogOut, 
+  Settings, 
+  User, 
+  Moon, 
+  Sun, 
+  Loader2,
+  MenuSquare,
+  ScanSearch
+} from 'lucide-react';
+import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useAuth } from "@/contexts/AuthContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useNotebook } from "@/contexts/NotebookContext";
+} from '@/components/ui/dropdown-menu';
+import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useNotebook } from '@/contexts/NotebookContext';
+import AIToolbar from '@/components/ai/AIToolbar';
 
 const Navbar = () => {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const isMobile = useIsMobile();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { user, signOut } = useAuth();
   const { syncNotebooks } = useNotebook();
-  const [isSyncing, setIsSyncing] = useState(false);
   
-  const handleSync = async () => {
-    setIsSyncing(true);
-    toast({
-      title: "Syncing",
-      description: "Syncing your notes to the cloud",
-    });
+  const handleSignOut = async () => {
+    if (isLoggingOut) return;
     
     try {
-      await syncNotebooks();
-      
-      toast({
-        title: "Sync Complete",
-        description: (
-          <div className="flex items-center">
-            <Check className="h-4 w-4 text-green-500 mr-2" />
-            <span>Your notes have been successfully synced</span>
-          </div>
-        )
-      });
+      setIsLoggingOut(true);
+      await signOut();
+      navigate('/login');
     } catch (error) {
-      console.error("Sync error:", error);
-      toast({
-        title: "Sync Failed",
-        description: "There was a problem syncing your notes. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Error signing out:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    
+    try {
+      setIsSyncing(true);
+      await syncNotebooks();
+    } catch (error) {
+      console.error('Error syncing notebooks:', error);
     } finally {
       setIsSyncing(false);
     }
   };
   
-  const handleSettings = () => {
-    navigate('/settings');
-  };
-  
-  const handleHome = () => {
-    navigate('/');
-  };
-  
-  const handleProfile = () => {
-    navigate('/profile');
-  };
-  
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-    toast({
-      title: "Theme Changed",
-      description: `Switched to ${theme === 'light' ? 'dark' : 'light'} mode`,
-    });
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/welcome');
-  };
-
   const getUserInitials = () => {
-    if (!user) return "?";
-    
-    if (user.first_name && user.last_name) {
-      return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
-    } else if (user.email) {
-      return user.email.charAt(0).toUpperCase();
+    if (user?.displayName) {
+      return user.displayName.split(' ')
+        .map(name => name[0])
+        .join('')
+        .toUpperCase();
     }
     
-    return "?";
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    
+    return 'U';
   };
-
+  
   return (
-    <nav className="flex justify-between items-center border-b border-gray-200 px-4 sm:px-6 py-4 bg-white dark:bg-gray-800 dark:border-gray-700">
-      <div className="flex items-center space-x-2 cursor-pointer" onClick={handleHome}>
-        <img 
-          src="/lovable-uploads/f4922f7f-b535-43b2-95c5-dd0d26787fc1.png" 
-          alt="EcoNote Logo" 
-          className="h-8 w-8"
-          style={{ 
-            objectFit: 'contain',
-            filter: theme === 'dark' ? 'brightness(0) invert(1)' : 'brightness(0) invert(0)'
-          }}
-        />
-        <span className="text-xl font-semibold text-pen-dark dark:text-white hidden sm:inline">EcoNote</span>
+    <div className="h-16 border-b bg-white dark:bg-gray-800 px-4 flex items-center justify-between">
+      <div className="flex items-center">
+        <Link to="/" className="flex items-center">
+          <MenuSquare className="h-6 w-6 text-green-600 mr-2" />
+          <span className="text-xl font-semibold text-gray-900 dark:text-gray-100">EcoNote</span>
+        </Link>
+        
+        <div className="ml-4 hidden md:flex">
+          <Link to="/notes">
+            <Button variant="ghost" size="sm">
+              Notes
+            </Button>
+          </Link>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate('/notes', { state: { scanMode: true } })}
+          >
+            <ScanSearch className="h-4 w-4 mr-1" />
+            Scan
+          </Button>
+          
+          {/* Add AI Tools to Navbar */}
+          <AIToolbar />
+        </div>
       </div>
       
-      <div className="flex items-center space-x-2 sm:space-x-4">
+      <div className="flex items-center gap-2">
         <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex items-center gap-1 sm:gap-2"
+          variant="ghost" 
+          size="icon" 
+          aria-label="Toggle theme"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        >
+          {theme === 'dark' ? (
+            <Moon className="h-5 w-5" />
+          ) : (
+            <Sun className="h-5 w-5" />
+          )}
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Sync notes"
           onClick={handleSync}
           disabled={isSyncing}
         >
           {isSyncing ? (
-            <>
-              <CloudUpload className="h-4 w-4 animate-pulse" />
-              <span className="hidden sm:inline">Syncing...</span>
-            </>
+            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <>
-              <CloudUpload className="h-4 w-4" />
-              <span className="hidden sm:inline">Sync</span>
-            </>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-5 w-5"
+            >
+              <path d="M17.5 11.5H22v-4" />
+              <path d="M22 11.5A10 10 0 1 1 8 3" />
+            </svg>
           )}
         </Button>
         
-        <div className="flex items-center space-x-1 sm:space-x-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <BellRing className="h-5 w-5" />
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-pen-accent animate-pulse-light" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                Welcome to EcoNote! Explore all features.
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                Try the new Study Mode on your notes.
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                Your notes are synced across all devices.
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleSettings}
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar>
-                  <AvatarImage src={user?.avatar_url} />
-                  <AvatarFallback className="bg-pen-primary text-white">
-                    {getUserInitials()}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>
-                {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : user?.email}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem onClick={handleProfile}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={toggleTheme}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Toggle {theme === 'light' ? 'Dark' : 'Light'} Mode</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSettings}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage 
+                  src={user?.photoURL || ''} 
+                  alt={user?.displayName || 'User'} 
+                />
+                <AvatarFallback>{getUserInitials()}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">
+                  {user?.displayName || 'User'}
+                </p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email || ''}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/profile')}>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={handleSignOut}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+              )}
+              <span>{isLoggingOut ? 'Signing out...' : 'Sign out'}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </nav>
+    </div>
   );
 };
 

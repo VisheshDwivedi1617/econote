@@ -65,36 +65,52 @@ const TextConversionPanel = () => {
     setIsProcessing(true);
     
     try {
-      if (strokes.length === 0) {
-        setError("No handwriting to convert. Please write something first.");
-        setIsProcessing(false);
-        return;
+      let imageUrl = '';
+      
+      // Check if this is a scanned note
+      if (currentPage?.isScanned && currentPage?.imageData) {
+        console.log("Processing scanned note image");
+        imageUrl = currentPage.imageData;
+      } else {
+        // Check strokes
+        if (strokes.length === 0) {
+          setError("No handwriting to convert. Please write something first.");
+          setIsProcessing(false);
+          return;
+        }
+        
+        // Get image from canvas
+        const canvas = document.querySelector('canvas');
+        if (!canvas) {
+          setError("Canvas not found. Please try again.");
+          setIsProcessing(false);
+          return;
+        }
+        
+        imageUrl = canvas.toDataURL('image/png');
+        console.log("Got image from canvas");
       }
       
-      // Since we can't directly recognize handwriting from strokes,
-      // we'll use the canvas to get an image URL and then use recognizeText
-      const canvas = document.querySelector('canvas');
-      if (!canvas) {
-        setError("Canvas not found. Please try again.");
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Get image data from canvas
-      const imageUrl = canvas.toDataURL('image/png');
+      console.log("Starting OCR with language:", language);
       const result = await OCRService.recognizeHandwriting(imageUrl, language);
+      console.log("OCR completed, setting text:", result.substring(0, 100) + "...");
       setConvertedText(result);
       
       // Expand panel to show result
       setIsExpanded(true);
       
+      toast({
+        title: "Text conversion complete",
+        description: "Your handwriting has been converted to text",
+      });
+      
     } catch (err) {
       console.error('OCR error:', err);
-      setError(`Failed to convert handwriting to text: ${err}`);
+      setError(`Failed to convert to text: ${err}`);
       
       toast({
         title: "Conversion failed",
-        description: "Could not convert handwriting to text",
+        description: "Could not convert to text. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -139,6 +155,14 @@ const TextConversionPanel = () => {
         variant: "destructive",
       });
     }
+  };
+  
+  // Determine if we're ready to perform OCR
+  const canPerformOcr = () => {
+    if (currentPage?.isScanned && currentPage?.imageData) {
+      return true;
+    }
+    return strokes.length > 0;
   };
   
   return (
@@ -187,7 +211,7 @@ const TextConversionPanel = () => {
               
               <Button
                 onClick={handleConvertToText}
-                disabled={isProcessing || strokes.length === 0}
+                disabled={isProcessing || !canPerformOcr()}
               >
                 {isProcessing ? (
                   <>
@@ -204,7 +228,7 @@ const TextConversionPanel = () => {
               <div className="mt-2">
                 <Progress value={processingProgress} className="h-2" />
                 <p className="text-xs text-gray-500 mt-1">
-                  Processing handwriting... {processingProgress}%
+                  Processing... {processingProgress}%
                 </p>
               </div>
             )}
@@ -242,7 +266,7 @@ const TextConversionPanel = () => {
                     </Button>
                   </div>
                 </div>
-                <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm">
+                <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm max-h-60 overflow-y-auto">
                   {convertedText}
                 </div>
               </div>

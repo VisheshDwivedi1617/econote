@@ -227,7 +227,7 @@ const Sidebar = ({ className }: SidebarProps) => {
   const handleAddFolder = () => {
     setFolderNameError("");
     
-    if (!newFolderName.trim()) {
+    if (!newFolderName || !newFolderName.trim()) {
       setFolderNameError("Folder name cannot be empty");
       return;
     }
@@ -471,7 +471,16 @@ const Sidebar = ({ className }: SidebarProps) => {
                 ))}
                 
                 {section.title === "Folders" && (
-                  <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
+                  <Dialog 
+                    open={isNewFolderDialogOpen} 
+                    onOpenChange={(open) => {
+                      setIsNewFolderDialogOpen(open);
+                      if (!open) {
+                        setFolderNameError("");
+                        setNewFolderName("");
+                      }
+                    }}
+                  >
                     <DialogTrigger asChild>
                       <Button variant="ghost" className="w-full justify-start gap-2 text-sm text-green-600">
                         <FolderPlus className="h-4 w-4" />
@@ -497,6 +506,7 @@ const Sidebar = ({ className }: SidebarProps) => {
                               onChange={(e) => setNewFolderName(e.target.value)}
                               className={folderNameError ? "border-red-500" : ""}
                               ref={folderNameInputRef}
+                              autoComplete="off"
                             />
                             {folderNameError && (
                               <p className="text-red-500 text-sm mt-1">{folderNameError}</p>

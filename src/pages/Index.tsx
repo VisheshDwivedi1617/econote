@@ -1,4 +1,3 @@
-
 import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
@@ -202,10 +201,6 @@ const Index = () => {
       </div>
       
       <div className="fixed bottom-0 right-0 p-4 space-y-4 z-20">
-        <div className={`fixed ${isMobile ? 'bottom-0 left-0 right-0' : 'bottom-0 left-0 right-0'} z-10`}>
-          <AIToolbar />
-        </div>
-        
         <div className={`fixed ${isMobile ? 'bottom-20 right-4' : 'bottom-6 right-6'} z-10`}>
           <Button 
             onClick={() => {
