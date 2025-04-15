@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useNotebook } from "@/contexts/NotebookContext";
 import Navbar from "@/components/layout/Navbar";
@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, BookOpen, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import ErrorBoundary from "@/components/error/ErrorBoundary";
+import analyticsService, { EventCategory, FeatureAction } from "@/services/AnalyticsService";
 
 const NotePage = () => {
   const { noteId } = useParams<{ noteId: string }>();
@@ -20,10 +22,16 @@ const NotePage = () => {
   const [pageTitle, setPageTitle] = useState("");
   const [loading, setLoading] = useState(true);
   const [showStudyMode, setShowStudyMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const isMobile = useIsMobile();
   
   // Load the note when the component mounts or noteId changes
   useEffect(() => {
+    // Track page view
+    if (noteId) {
+      analyticsService.trackPageView(`/note/${noteId}`, 'Note View');
+    }
+    
     const loadNoteData = async () => {
       if (!noteId) {
         navigate("/notes");
@@ -31,10 +39,24 @@ const NotePage = () => {
       }
       
       try {
+        const startTime = performance.now();
         setLoading(true);
         await switchPage(noteId);
+        
+        // Track loading performance
+        const loadTime = performance.now() - startTime;
+        analyticsService.trackPerformance('note_load_time', loadTime, {
+          note_id: noteId
+        });
       } catch (error) {
         console.error("Error loading note:", error);
+        
+        // Track error
+        analyticsService.trackError(
+          error instanceof Error ? error.message : 'Unknown error loading note',
+          'note_loading'
+        );
+        
         toast({
           title: "Error",
           description: "Failed to load the note",
@@ -63,9 +85,14 @@ const NotePage = () => {
   const handleSave = async () => {
     if (!currentPage) return;
     
+    if (isSaving) return;
+    setIsSaving(true);
+    
     try {
       // Update the title if it has changed
       if (currentPage.title !== pageTitle) {
+        const startTime = performance.now();
+        
         const updatedPage = {
           ...currentPage,
           title: pageTitle,
@@ -74,6 +101,13 @@ const NotePage = () => {
         
         await updatePage(updatedPage);
         
+        // Track save performance and event
+        const saveTime = performance.now() - startTime;
+        analyticsService.trackPerformance('note_save_time', saveTime);
+        analyticsService.trackFeatureUsage('note', FeatureAction.EDIT, {
+          changed_title: true
+        });
+        
         toast({
           title: "Saved",
           description: "Note has been saved successfully",
@@ -81,11 +115,20 @@ const NotePage = () => {
       }
     } catch (error) {
       console.error("Error saving note:", error);
+      
+      // Track error
+      analyticsService.trackError(
+        error instanceof Error ? error.message : 'Unknown error saving note',
+        'note_saving'
+      );
+      
       toast({
         title: "Error",
         description: "Failed to save the note",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -110,6 +153,12 @@ const NotePage = () => {
       });
       return;
     }
+    
+    // Track study mode usage
+    analyticsService.trackFeatureUsage('study_mode', FeatureAction.VIEW, {
+      note_id: currentPage.id,
+      is_scanned: currentPage.isScanned || false
+    });
     
     setShowStudyMode(true);
   };
@@ -148,9 +197,16 @@ const NotePage = () => {
                 size="sm"
                 className="flex items-center gap-2"
                 onClick={handleSave}
+                disabled={isSaving}
               >
-                <Save className="h-4 w-4" />
-                <span className={isMobile ? "hidden" : "inline"}>Save</span>
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span className={isMobile ? "hidden" : "inline"}>
+                  {isSaving ? "Saving..." : "Save"}
+                </span>
               </Button>
               
               <Button
@@ -173,21 +229,23 @@ const NotePage = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-auto">
-              {isScannedNote ? (
-                // Display scanned note image with OCR capabilities
-                <div className="p-2 sm:p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
-                  <ScannedNoteView 
-                    imageData={currentPage.imageData!} 
-                    pageId={currentPage.id}
-                    className="max-w-3xl mx-auto" 
-                  />
-                </div>
-              ) : (
-                // Display digital canvas for regular notes
-                <DigitalCanvas />
-              )}
-            </div>
+            <ErrorBoundary>
+              <div className="flex-1 overflow-auto">
+                {isScannedNote ? (
+                  // Display scanned note image with OCR capabilities
+                  <div className="p-2 sm:p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
+                    <ScannedNoteView 
+                      imageData={currentPage.imageData!} 
+                      pageId={currentPage.id}
+                      className="max-w-3xl mx-auto" 
+                    />
+                  </div>
+                ) : (
+                  // Display digital canvas for regular notes
+                  <DigitalCanvas />
+                )}
+              </div>
+            </ErrorBoundary>
           )}
         </div>
       </div>
@@ -197,7 +255,16 @@ const NotePage = () => {
         <StudyModeView
           noteId={noteId}
           open={showStudyMode}
-          onOpenChange={setShowStudyMode}
+          onOpenChange={(open) => {
+            setShowStudyMode(open);
+            if (!open && currentPage) {
+              // Track study mode exit
+              analyticsService.trackFeatureUsage('study_mode', FeatureAction.VIEW, {
+                note_id: currentPage.id,
+                session_ended: true
+              });
+            }
+          }}
         />
       )}
       
