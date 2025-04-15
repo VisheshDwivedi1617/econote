@@ -1,8 +1,7 @@
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CloudUpload, User, Settings, BellRing, LogOut, Check } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useState } from "react";
 import { 
@@ -48,8 +47,6 @@ const Navbar = () => {
       
       toast({
         title: "Sync Complete",
-        description: "Your notes have been successfully synced",
-        // Remove the 'icon' property and instead use a custom component in description if needed
         description: (
           <div className="flex items-center">
             <Check className="h-4 w-4 text-green-500 mr-2" />

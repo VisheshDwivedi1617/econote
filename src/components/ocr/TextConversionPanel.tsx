@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   AlertCircle, 
@@ -7,7 +7,8 @@ import {
   ChevronUp, 
   ClipboardCopy, 
   FileText, 
-  Loader2
+  Loader2,
+  Save
 } from "lucide-react";
 import {
   Select,
@@ -17,9 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import OCRService, { OCRLanguage } from "@/services/OCRService";
 import { useNotebook } from "@/contexts/NotebookContext";
+import { Progress } from "@/components/ui/progress";
 
 const TextConversionPanel = () => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,11 +29,34 @@ const TextConversionPanel = () => {
   const [convertedText, setConvertedText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<OCRLanguage>('eng');
+  const [processingProgress, setProcessingProgress] = useState(0);
   const { toast } = useToast();
-  const { strokes } = useNotebook();
+  const { strokes, currentPage, updatePage } = useNotebook();
   
   // Get supported languages
   const languages = OCRService.getSupportedLanguages();
+  
+  // Simulate progress during OCR processing
+  useEffect(() => {
+    let intervalId: number | undefined;
+    
+    if (isProcessing) {
+      setProcessingProgress(0);
+      intervalId = window.setInterval(() => {
+        setProcessingProgress(prev => {
+          // Don't go to 100% until actually done
+          return prev >= 85 ? 85 : prev + 5;
+        });
+      }, 500);
+    } else if (processingProgress < 100 && processingProgress > 0) {
+      // Complete the progress bar when done
+      setProcessingProgress(100);
+    }
+    
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [isProcessing, processingProgress]);
   
   const handleConvertToText = async () => {
     // Reset state
@@ -42,6 +67,7 @@ const TextConversionPanel = () => {
     try {
       if (strokes.length === 0) {
         setError("No handwriting to convert. Please write something first.");
+        setIsProcessing(false);
         return;
       }
       
@@ -56,7 +82,7 @@ const TextConversionPanel = () => {
       
       // Get image data from canvas
       const imageUrl = canvas.toDataURL('image/png');
-      const result = await OCRService.recognizeText(imageUrl, language);
+      const result = await OCRService.recognizeHandwriting(imageUrl, language);
       setConvertedText(result);
       
       // Expand panel to show result
@@ -85,6 +111,34 @@ const TextConversionPanel = () => {
       title: "Copied to clipboard",
       description: "Text has been copied to your clipboard",
     });
+  };
+
+  const saveToNote = async () => {
+    if (!convertedText || !currentPage) return;
+    
+    try {
+      // Update the current page to store the OCR text
+      const updatedPage = {
+        ...currentPage,
+        ocrText: convertedText,
+        ocrLanguage: language,
+        updatedAt: Date.now()
+      };
+      
+      await updatePage(updatedPage);
+      
+      toast({
+        title: "Text saved",
+        description: "The converted text has been saved to your note",
+      });
+    } catch (err) {
+      console.error('Save error:', err);
+      toast({
+        title: "Save failed",
+        description: "Could not save the text to your note",
+        variant: "destructive",
+      });
+    }
   };
   
   return (
@@ -146,6 +200,15 @@ const TextConversionPanel = () => {
               </Button>
             </div>
             
+            {isProcessing && (
+              <div className="mt-2">
+                <Progress value={processingProgress} className="h-2" />
+                <p className="text-xs text-gray-500 mt-1">
+                  Processing handwriting... {processingProgress}%
+                </p>
+              </div>
+            )}
+            
             {error && (
               <Alert variant="destructive" className="mt-2">
                 <AlertCircle className="h-4 w-4" />
@@ -160,14 +223,24 @@ const TextConversionPanel = () => {
                   <h4 className="font-medium text-gray-700 dark:text-gray-300">
                     Converted Text:
                   </h4>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={copyToClipboard}
-                    title="Copy to clipboard"
-                  >
-                    <ClipboardCopy className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={copyToClipboard}
+                      title="Copy to clipboard"
+                    >
+                      <ClipboardCopy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={saveToNote}
+                      title="Save to note"
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm">
                   {convertedText}

@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -8,10 +7,9 @@ import {
   Plus, Folder, Menu, X
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useNotebook } from "@/contexts/NotebookContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import StorageService from "@/services/StorageService";
 import { 
   Dialog,
   DialogContent,
@@ -76,6 +74,7 @@ const Sidebar = ({ className }: SidebarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [folderNameError, setFolderNameError] = useState("");
   const [tagNameError, setTagNameError] = useState("");
+  const [isCreatingNote, setIsCreatingNote] = useState(false);
   
   // Refs for input elements
   const folderNameInputRef = useRef<HTMLInputElement>(null);
@@ -150,10 +149,20 @@ const Sidebar = ({ className }: SidebarProps) => {
     }));
   };
 
-  const handleCreateNewNote = async (folderId?: string) => {
+  const handleCreateNewNote = useCallback(async (folderId?: string) => {
+    if (isCreatingNote) return;
+    
     try {
+      setIsCreatingNote(true);
       const counter = incrementNoteCounter();
-      const title = `NewNote_${counter}`;
+      const title = `Note ${counter}`;
+      
+      // Show a loading toast
+      toast({
+        title: "Creating New Note",
+        description: "Please wait while your note is being created...",
+      });
+      
       const newPage = await createPage(title);
       
       if (folderId) {
@@ -179,6 +188,7 @@ const Sidebar = ({ className }: SidebarProps) => {
         });
       }
       
+      // Navigate to the new note
       navigate(`/note/${newPage.id}`);
       
       if (mobileMenuOpen) {
@@ -192,8 +202,10 @@ const Sidebar = ({ className }: SidebarProps) => {
         description: "Failed to create new note",
         variant: "destructive",
       });
+    } finally {
+      setIsCreatingNote(false);
     }
-  };
+  }, [createPage, folders, incrementNoteCounter, isCreatingNote, mobileMenuOpen, navigate, saveFolders, toast]);
 
   const handleNoteClick = (pageId: string) => {
     navigate(`/note/${pageId}`);
@@ -396,9 +408,19 @@ const Sidebar = ({ className }: SidebarProps) => {
         <Button 
           className="w-full justify-start gap-2 bg-green-600 hover:bg-green-700"
           onClick={() => handleCreateNewNote()}
+          disabled={isCreatingNote}
         >
-          <PenTool className="h-4 w-4" />
-          <span>New Note</span>
+          {isCreatingNote ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Creating...</span>
+            </>
+          ) : (
+            <>
+              <PenTool className="h-4 w-4" />
+              <span>New Note</span>
+            </>
+          )}
         </Button>
       </div>
       
