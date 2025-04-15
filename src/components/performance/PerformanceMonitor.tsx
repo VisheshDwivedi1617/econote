@@ -11,9 +11,10 @@ const PerformanceMonitor = () => {
         const navigationTiming = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
         
         if (navigationTiming) {
-          // Calculate load time metrics
-          const pageLoadTime = navigationTiming.loadEventEnd - navigationTiming.navigationStart;
-          const domReadyTime = navigationTiming.domContentLoadedEventEnd - navigationTiming.navigationStart;
+          // Calculate load time metrics using modern properties
+          // startTime is the equivalent of navigationStart in the modern API
+          const pageLoadTime = navigationTiming.loadEventEnd - navigationTiming.startTime;
+          const domReadyTime = navigationTiming.domContentLoadedEventEnd - navigationTiming.startTime;
           const backendTime = navigationTiming.responseEnd - navigationTiming.requestStart;
           const frontendTime = navigationTiming.loadEventEnd - navigationTiming.responseEnd;
           
