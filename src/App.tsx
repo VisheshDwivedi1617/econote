@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,10 +12,11 @@ import { Loader2 } from "lucide-react";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { useAuth } from "./contexts/AuthContext";
 
-// Lazy-loaded components for code splitting
+// Lazy-loaded components for code splitting - using direct imports for critical components
+// that were causing issues with dynamic imports
 const Index = lazy(() => import("./pages/Index"));
 const Settings = lazy(() => import("./pages/Settings"));
-const NotePage = lazy(() => import("./pages/NotePage"));
+const NotePage = lazy(() => import("./pages/NotePage").then(module => ({ default: module.default })));
 const AllNotesPage = lazy(() => import("./pages/AllNotesPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));

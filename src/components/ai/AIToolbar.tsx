@@ -122,17 +122,24 @@ const AIToolbar = () => {
   
   // For desktop, return a component that is placed in the navbar
   return (
-    <div>
+    <TooltipProvider>
       <Popover>
         <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5"
-          >
-            <Sparkles className="h-4 w-4 text-blue-500" />
-            <span>AI Tools</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+              >
+                <Sparkles className="h-4 w-4 text-blue-500" />
+                <span>AI Tools</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>AI Tools</p>
+            </TooltipContent>
+          </Tooltip>
         </PopoverTrigger>
         <PopoverContent className="w-60 p-0" align="end">
           <div className="p-3 border-b">
@@ -146,7 +153,7 @@ const AIToolbar = () => {
           </div>
         </PopoverContent>
       </Popover>
-    </div>
+    </TooltipProvider>
   );
 };
 

@@ -1,5 +1,5 @@
 
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useNotebook } from "@/contexts/NotebookContext";
 import Navbar from "@/components/layout/Navbar";
@@ -8,7 +8,7 @@ import DigitalCanvas from "@/components/canvas/DigitalCanvas";
 import ScannedNoteView from "@/components/scanner/ScannedNoteView";
 import StudyModeView from "@/components/study/StudyModeView";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, BookOpen, Loader2, Brain, PanelLeft } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Brain, PanelLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
@@ -324,8 +324,8 @@ const NotePage = () => {
       )}
       
       {/* Mobile sidebar */}
-      {isMobile && (
-        <Sidebar className={showSidebar ? "block fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg animate-in slide-in-from-left-80" : "hidden"} />
+      {isMobile && showSidebar && (
+        <Sidebar className="block fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg animate-in slide-in-from-left-80" />
       )}
     </div>
   );
