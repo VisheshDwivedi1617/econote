@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -77,7 +76,6 @@ const Sidebar = ({ className }: SidebarProps) => {
   const [tagNameError, setTagNameError] = useState("");
   const [isCreatingNote, setIsCreatingNote] = useState(false);
   
-  // Refs for input elements
   const folderNameInputRef = useRef<HTMLInputElement>(null);
   const tagNameInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,7 +91,6 @@ const Sidebar = ({ className }: SidebarProps) => {
     loadTags();
   }, []);
 
-  // Focus input on dialog open
   useEffect(() => {
     if (isNewFolderDialogOpen && folderNameInputRef.current) {
       setTimeout(() => folderNameInputRef.current?.focus(), 100);
@@ -115,7 +112,6 @@ const Sidebar = ({ className }: SidebarProps) => {
     if (storedTags) {
       setTags(JSON.parse(storedTags));
     } else {
-      // Default tags
       const defaultTags: Tag[] = [
         { id: "1", name: "Work", color: "#3b82f6" },
         { id: "2", name: "Personal", color: "#10b981" },
@@ -158,13 +154,16 @@ const Sidebar = ({ className }: SidebarProps) => {
       const counter = incrementNoteCounter();
       const title = `Note ${counter}`;
       
-      // Show a loading toast
       toast({
         title: "Creating New Note",
         description: "Please wait while your note is being created...",
       });
       
       const newPage = await createPage(title);
+      
+      if (!newPage || !newPage.id) {
+        throw new Error("Failed to create new note");
+      }
       
       if (folderId) {
         const updatedFolders = folders.map(folder => {
@@ -189,12 +188,13 @@ const Sidebar = ({ className }: SidebarProps) => {
         });
       }
       
-      // Navigate to the new note
-      navigate(`/note/${newPage.id}`);
-      
-      if (mobileMenuOpen) {
-        setMobileMenuOpen(false);
-      }
+      setTimeout(() => {
+        navigate(`/note/${newPage.id}`);
+        
+        if (mobileMenuOpen) {
+          setMobileMenuOpen(false);
+        }
+      }, 100);
     } catch (error) {
       console.error("Error creating note:", error);
       

@@ -8,7 +8,7 @@ import DigitalCanvas from "@/components/canvas/DigitalCanvas";
 import ScannedNoteView from "@/components/scanner/ScannedNoteView";
 import StudyModeView from "@/components/study/StudyModeView";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, BookOpen } from "lucide-react";
+import { ArrowLeft, Save, BookOpen, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -156,10 +156,10 @@ const NotePage = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800"
                 onClick={openStudyMode}
               >
-                <BookOpen className="h-4 w-4" />
+                <BookOpen className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <span className={isMobile ? "hidden" : "inline"}>Study Mode</span>
               </Button>
             </div>
@@ -167,7 +167,10 @@ const NotePage = () => {
           
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <p>Loading...</p>
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+                <p>Loading note...</p>
+              </div>
             </div>
           ) : (
             <div className="flex-1 overflow-auto">

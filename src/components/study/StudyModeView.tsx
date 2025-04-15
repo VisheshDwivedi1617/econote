@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -31,7 +30,7 @@ const StudyModeView: React.FC<StudyModeViewProps> = ({ noteId, open, onOpenChang
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
-  const { currentNotebook, switchPage } = useNotebook();
+  const { currentNotebook, currentPage, switchPage } = useNotebook();
 
   useEffect(() => {
     if (open) {
@@ -47,15 +46,29 @@ const StudyModeView: React.FC<StudyModeViewProps> = ({ noteId, open, onOpenChang
       // This will make the page current, and we can access it via the currentPage in the context
       await switchPage(noteId);
       
-      // Get the pages from the notebook
-      if (currentNotebook) {
+      // Check if we have the currentPage available
+      if (currentPage && currentPage.id === noteId) {
+        // Use the actual page data
+        setCurrentNote({
+          id: noteId,
+          content: currentPage.isScanned 
+            ? currentPage.ocrText || "This note is still being processed with OCR." 
+            : "This is the note content for study mode.",
+          strokes: currentPage.strokes || [],
+          isScanned: currentPage.isScanned || false,
+          imageData: currentPage.imageData || null,
+          ocrText: currentPage.ocrText || null,
+        });
+      } else if (currentNotebook) {
+        // Fallback to checking if the page exists in the notebook
         const pageIndex = currentNotebook.pages.indexOf(noteId);
         if (pageIndex !== -1) {
           // Simply set a basic structure for the note to work with
           setCurrentNote({
             id: noteId,
             content: "This is the note content for study mode.",
-            // You can add other properties as needed
+            strokes: [],
+            isScanned: false,
           });
         } else {
           console.error("Could not find note with ID:", noteId);
@@ -86,6 +99,7 @@ const StudyModeView: React.FC<StudyModeViewProps> = ({ noteId, open, onOpenChang
     setIsGenerating(true);
     
     try {
+      // Pass the whole note object to the service
       const flashcards = await StudyService.generateFlashcards(noteId, currentNote);
       setFlashcards(flashcards);
       setMode('flashcards');
@@ -111,6 +125,7 @@ const StudyModeView: React.FC<StudyModeViewProps> = ({ noteId, open, onOpenChang
     setIsGenerating(true);
     
     try {
+      // Pass the whole note object to the service
       const quizzes = await StudyService.generateQuizzes(noteId, currentNote);
       setQuizzes(quizzes);
       setMode('quiz');
@@ -218,8 +233,16 @@ const StudyModeView: React.FC<StudyModeViewProps> = ({ noteId, open, onOpenChang
     } else if (mode === 'quiz' && quizzes.length > 0) {
       return renderQuiz();
     } else {
-      // Try to get content in a safe way
-      const content = currentNote.content || currentNote.text || currentNote.ocrText || "";
+      // Try to get content in a safe way from the note object
+      let content = "";
+      
+      if (currentNote.isScanned && currentNote.ocrText) {
+        content = currentNote.ocrText;
+      } else if (currentNote.content) {
+        content = currentNote.content;
+      } else if (currentNote.strokes && currentNote.strokes.length > 0) {
+        content = `Note with ${currentNote.strokes.length} strokes`;
+      }
       
       if (!content || content.trim() === '') {
         return (
@@ -236,7 +259,7 @@ const StudyModeView: React.FC<StudyModeViewProps> = ({ noteId, open, onOpenChang
       
       return (
         <div className="flex justify-center items-center h-full">
-          <div className="text-center">
+          <div className="text-center max-w-md">
             <Brain className="h-16 w-16 mx-auto mb-4 text-blue-500" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Ready to Study</h3>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
