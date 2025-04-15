@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -12,6 +11,7 @@ import BluetoothService from "@/services/BluetoothService";
 import PenDataInterpreter from "@/services/PenDataInterpreter";
 import CalibrationTool from "@/components/calibration/CalibrationTool";
 import { useNotebook } from "@/contexts/NotebookContext";
+import { Progress } from "@/components/ui/progress";
 
 interface PenStatusProps {
   className?: string;
@@ -25,11 +25,19 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
   const [penName, setPenName] = useState("Smart Pen");
   const [showCalibration, setShowCalibration] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [showDetectionAnimation, setShowDetectionAnimation] = useState(false);
   const { toast } = useToast();
-  const { addStroke } = useNotebook();
+  const { addStroke, syncNotebooks } = useNotebook();
 
   useEffect(() => {
-    // Set up event handlers for Bluetooth service
+    if (connecting) {
+      setShowDetectionAnimation(true);
+      const timer = setTimeout(() => setShowDetectionAnimation(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [connecting]);
+
+  useEffect(() => {
     BluetoothService.onConnectionChange = (isConnected) => {
       setConnected(isConnected);
       setConnecting(false);
@@ -53,23 +61,17 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
       }
     };
     
-    // Set up battery level handler
     BluetoothService.onBatteryLevel = (level) => {
       setBatteryLevel(level);
     };
     
-    // Set up data handler for the pen
     BluetoothService.onDataReceived = (data) => {
-      // Process the raw data through the interpreter
       PenDataInterpreter.processRawData(data);
     };
     
-    // Set up handlers for the interpreter
     PenDataInterpreter.setOnNewStroke((stroke) => {
-      // Add to notebook context
       addStroke(stroke);
       
-      // Also call the original handler if provided
       if (onPenData) {
         onPenData({
           type: 'stroke',
@@ -79,7 +81,6 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
     });
     
     return () => {
-      // Clean up
       BluetoothService.onConnectionChange = null;
       BluetoothService.onBatteryLevel = null;
       BluetoothService.onDataReceived = null;
@@ -87,7 +88,6 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
     };
   }, [onPenData, penName, toast, addStroke]);
   
-  // Handle connect/disconnect
   const handleConnect = async () => {
     if (connected) {
       await BluetoothService.disconnect();
@@ -97,7 +97,8 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
     setConnecting(true);
     
     try {
-      // Check for Web Bluetooth API support
+      setShowDetectionAnimation(true);
+      
       if (!navigator.bluetooth) {
         toast({
           title: "Bluetooth Not Supported",
@@ -105,10 +106,12 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
           variant: "destructive",
         });
         setConnecting(false);
+        setShowDetectionAnimation(false);
         return;
       }
       
-      // Scan for devices
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const devices = await BluetoothService.scanForDevices();
       
       if (devices.length === 0) {
@@ -118,10 +121,17 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
           variant: "destructive",
         });
         setConnecting(false);
+        setShowDetectionAnimation(false);
         return;
       }
       
-      // Connect to the first device (in a real app, you might show a selection UI)
+      if (devices.length > 1) {
+        toast({
+          title: "Multiple Devices Found",
+          description: `Connecting to ${devices[0].name}...`,
+        });
+      }
+      
       const success = await BluetoothService.connect(devices[0]);
       
       if (!success) {
@@ -131,6 +141,7 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
           variant: "destructive",
         });
         setConnecting(false);
+        setShowDetectionAnimation(false);
       }
     } catch (error) {
       console.error('Connection error:', error);
@@ -140,10 +151,44 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
         variant: "destructive",
       });
       setConnecting(false);
+      setShowDetectionAnimation(false);
     }
   };
   
-  // Open calibration
+  const handleSync = async () => {
+    if (!connected && !isOfflineMode) {
+      toast({
+        title: "Pen Not Connected",
+        description: "Please connect your pen before syncing",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "Syncing Notes",
+      description: "Transferring notes from pen to cloud storage...",
+    });
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      await syncNotebooks();
+      
+      toast({
+        title: "Sync Complete",
+        description: "Your notes have been successfully synced",
+      });
+    } catch (error) {
+      console.error("Sync error:", error);
+      toast({
+        title: "Sync Failed",
+        description: "There was a problem syncing your notes",
+        variant: "destructive",
+      });
+    }
+  };
+  
   const handleCalibrate = () => {
     if (!connected && !isOfflineMode) {
       toast({
@@ -157,7 +202,6 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
     setShowCalibration(true);
   };
   
-  // Toggle offline mode
   const toggleOfflineMode = () => {
     setIsOfflineMode(prev => !prev);
     
@@ -174,11 +218,9 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
     }
   };
   
-  // For demo purposes - simulate connection
   const simulateConnection = () => {
     setConnecting(true);
     
-    // Simulate connection delay
     setTimeout(() => {
       setConnected(true);
       setConnecting(false);
@@ -189,16 +231,13 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
         description: "This is a simulated connection for demonstration purposes",
       });
       
-      // Start draining battery
       const interval = setInterval(() => {
         setBatteryLevel((prev) => {
-          // Randomly decrease battery between 0 and 1%
           const newLevel = prev - Math.random();
           return newLevel < 0 ? 0 : newLevel;
         });
       }, 30000);
       
-      // Clear interval when component unmounts
       return () => clearInterval(interval);
     }, 2000);
   };
@@ -228,11 +267,20 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
         {connected && (
           <div className="flex gap-2 ml-2">
             <Bluetooth className="h-4 w-4 text-blue-500" />
-            <BatteryFull className="h-4 w-4 text-green-500" />
+            <div className="w-10">
+              <Progress value={batteryLevel} className={`h-2 ${batteryLevel < 20 ? 'bg-red-200' : 'bg-green-200'}`} />
+            </div>
           </div>
         )}
         
         <div className="flex items-center gap-2">
+          {showDetectionAnimation && !connected && (
+            <div className="absolute inset-0 bg-black bg-opacity-5 backdrop-blur-sm rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full border-4 border-t-blue-500 border-b-transparent border-l-transparent border-r-blue-500 animate-spin"></div>
+              <p className="ml-2 text-sm font-medium">Scanning...</p>
+            </div>
+          )}
+          
           <Button
             variant={connected || isOfflineMode ? "outline" : "default"}
             size="sm"
@@ -293,13 +341,13 @@ const PenStatus = ({ className, onPenData }: PenStatusProps) => {
                 variant="outline"
                 size="sm"
                 title="Sync Notes"
+                onClick={handleSync}
               >
                 <Save className="h-4 w-4" />
               </Button>
             </>
           )}
           
-          {/* For demo purposes only */}
           {!connected && !connecting && !isOfflineMode && (
             <Button
               variant="outline"

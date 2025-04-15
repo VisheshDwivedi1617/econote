@@ -1,4 +1,3 @@
-
 // StorageService.ts - Handles local storage of pen strokes and notes
 
 import { PenStroke } from './PenDataInterpreter';
@@ -13,6 +12,7 @@ export interface NotePage {
   isScanned?: boolean; // Flag to identify scanned notes
   ocrText?: string; // Store OCR text for scanned notes
   ocrLanguage?: string; // Store the language used for OCR
+  lastSynced?: number; // When the page was last synced
 }
 
 export interface Notebook {
@@ -21,6 +21,7 @@ export interface Notebook {
   pages: string[]; // Array of page IDs
   createdAt: number;
   updatedAt: number;
+  lastSynced?: number; // When the notebook was last synced
 }
 
 class StorageService {
@@ -47,6 +48,10 @@ class StorageService {
     const index = notebooks.findIndex(n => n.id === notebook.id);
     
     if (index >= 0) {
+      // Preserve lastSynced if it exists and isn't being updated
+      if (notebooks[index].lastSynced && !notebook.lastSynced) {
+        notebook.lastSynced = notebooks[index].lastSynced;
+      }
       notebooks[index] = notebook;
     } else {
       notebooks.push(notebook);
@@ -219,6 +224,25 @@ class StorageService {
     
     await this.savePage(updatedPage);
     return updatedPage;
+  }
+  
+  // Add a method to get sync status
+  async getSyncStatus(): Promise<{ lastSynced: number | null }> {
+    const notebooks = await this.getNotebooks();
+    
+    if (notebooks.length === 0) {
+      return { lastSynced: null };
+    }
+    
+    // Find the most recent sync time across all notebooks
+    const mostRecentSync = notebooks.reduce((latest, notebook) => {
+      if (notebook.lastSynced && (!latest || notebook.lastSynced > latest)) {
+        return notebook.lastSynced;
+      }
+      return latest;
+    }, null as number | null);
+    
+    return { lastSynced: mostRecentSync };
   }
 }
 

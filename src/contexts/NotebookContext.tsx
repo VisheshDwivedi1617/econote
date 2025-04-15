@@ -41,6 +41,9 @@ interface NotebookContextType {
   // OCR operations
   performOCR: (pageId: string, language?: OCRLanguage) => Promise<string>;
   updateOCRText: (pageId: string, text: string, language: OCRLanguage) => Promise<void>;
+  
+  // Sync operations
+  syncNotebooks: () => Promise<void>;
 }
 
 const NotebookContext = createContext<NotebookContextType | undefined>(undefined);
@@ -386,6 +389,38 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
+  const syncNotebooks = async (): Promise<void> => {
+    if (currentPage && strokes.length > 0) {
+      await saveCurrentStrokes();
+    }
+    
+    const syncTime = Date.now();
+    const updatedNotebooks = [...notebooks].map(notebook => ({
+      ...notebook,
+      lastSynced: syncTime,
+      updatedAt: notebook.updatedAt
+    }));
+    
+    for (const notebook of updatedNotebooks) {
+      await StorageService.saveNotebook(notebook);
+    }
+    
+    setNotebooks(updatedNotebooks);
+    
+    if (currentNotebook) {
+      const updatedCurrentNotebook = updatedNotebooks.find(
+        notebook => notebook.id === currentNotebook.id
+      );
+      if (updatedCurrentNotebook) {
+        setCurrentNotebook(updatedCurrentNotebook);
+      }
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    return;
+  };
+  
   const contextValue: NotebookContextType = {
     notebooks,
     currentNotebook,
@@ -410,7 +445,8 @@ export const NotebookProvider = ({ children }: { children: ReactNode }) => {
     getTotalPages,
     createScannedPage,
     performOCR,
-    updateOCRText
+    updateOCRText,
+    syncNotebooks
   };
   
   return (

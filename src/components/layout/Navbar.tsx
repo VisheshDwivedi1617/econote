@@ -1,9 +1,9 @@
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CloudUpload, User, Settings, BellRing, LogOut } from "lucide-react";
+import { CloudUpload, User, Settings, BellRing, LogOut, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "@/hooks/use-theme";
+import { useState } from "react";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useNotebook } from "@/contexts/NotebookContext";
 
 const Navbar = () => {
   const { toast } = useToast();
@@ -31,12 +32,34 @@ const Navbar = () => {
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   const { user, signOut } = useAuth();
+  const { syncNotebooks } = useNotebook();
+  const [isSyncing, setIsSyncing] = useState(false);
   
-  const handleSync = () => {
+  const handleSync = async () => {
+    setIsSyncing(true);
     toast({
       title: "Syncing",
       description: "Syncing your notes to the cloud",
     });
+    
+    try {
+      await syncNotebooks();
+      
+      toast({
+        title: "Sync Complete",
+        description: "Your notes have been successfully synced",
+        icon: <Check className="h-4 w-4 text-green-500" />
+      });
+    } catch (error) {
+      console.error("Sync error:", error);
+      toast({
+        title: "Sync Failed",
+        description: "There was a problem syncing your notes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
   
   const handleSettings = () => {
@@ -64,7 +87,6 @@ const Navbar = () => {
     navigate('/welcome');
   };
 
-  // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (!user) return "?";
     
@@ -98,9 +120,19 @@ const Navbar = () => {
           size="sm" 
           className="flex items-center gap-1 sm:gap-2"
           onClick={handleSync}
+          disabled={isSyncing}
         >
-          <CloudUpload className="h-4 w-4" />
-          <span className="hidden sm:inline">Sync</span>
+          {isSyncing ? (
+            <>
+              <CloudUpload className="h-4 w-4 animate-pulse" />
+              <span className="hidden sm:inline">Syncing...</span>
+            </>
+          ) : (
+            <>
+              <CloudUpload className="h-4 w-4" />
+              <span className="hidden sm:inline">Sync</span>
+            </>
+          )}
         </Button>
         
         <div className="flex items-center space-x-1 sm:space-x-2">
