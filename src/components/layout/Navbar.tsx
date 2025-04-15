@@ -62,11 +62,10 @@ const Navbar = () => {
   };
   
   const getUserInitials = () => {
-    if (user?.displayName) {
-      return user.displayName.split(' ')
-        .map(name => name[0])
-        .join('')
-        .toUpperCase();
+    if (user?.first_name || user?.last_name) {
+      const firstInitial = user.first_name ? user.first_name[0] : '';
+      const lastInitial = user.last_name ? user.last_name[0] : '';
+      return (firstInitial + lastInitial).toUpperCase();
     }
     
     if (user?.email) {
@@ -149,8 +148,8 @@ const Navbar = () => {
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarImage 
-                  src={user?.photoURL || ''} 
-                  alt={user?.displayName || 'User'} 
+                  src={user?.avatar_url || ''} 
+                  alt={`${user?.first_name || ''} ${user?.last_name || ''}`} 
                 />
                 <AvatarFallback>{getUserInitials()}</AvatarFallback>
               </Avatar>
@@ -160,7 +159,7 @@ const Navbar = () => {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {user?.displayName || 'User'}
+                  {user ? `${user.first_name || ''} ${user.last_name || ''}` : 'User'}
                 </p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email || ''}
