@@ -8,11 +8,17 @@ import DigitalCanvas from "@/components/canvas/DigitalCanvas";
 import ScannedNoteView from "@/components/scanner/ScannedNoteView";
 import StudyModeView from "@/components/study/StudyModeView";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, BookOpen, Loader2, Brain } from "lucide-react";
+import { ArrowLeft, Save, BookOpen, Loader2, Brain, PanelLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
 import analyticsService, { EventCategory, FeatureAction } from "@/services/AnalyticsService";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const NotePage = () => {
   const { noteId } = useParams<{ noteId: string }>();
@@ -23,6 +29,7 @@ const NotePage = () => {
   const [loading, setLoading] = useState(true);
   const [showStudyMode, setShowStudyMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const isMobile = useIsMobile();
   
   // Load the note when the component mounts or noteId changes
@@ -172,15 +179,25 @@ const NotePage = () => {
       <div className="flex flex-1 overflow-hidden">
         {!isMobile && <Sidebar />}
         <div className="flex-1 flex flex-col">
-          <div className="flex flex-wrap items-center justify-between p-2 sm:p-4 border-b">
+          <div className="flex flex-wrap items-center justify-between p-2 sm:p-4 border-b bg-white dark:bg-gray-800 shadow-sm">
             <div className="flex items-center gap-2 w-full sm:w-auto mb-2 sm:mb-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/notes")}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate("/notes")}
+                      className="rounded-full"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Back to Notes</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
               <input
                 type="text"
@@ -189,36 +206,73 @@ const NotePage = () => {
                 className="text-lg sm:text-xl font-semibold bg-transparent border-none focus:outline-none focus:ring-0 w-full sm:w-auto"
                 placeholder="Untitled Note"
               />
+              
+              {isMobile && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowSidebar(!showSidebar)}
+                        className="ml-auto rounded-full"
+                      >
+                        <PanelLeft className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Toggle Sidebar</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              {/* Study Mode Button - Made more prominent */}
-              <Button
-                variant="default"
-                size="sm"
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={openStudyMode}
-              >
-                <Brain className="h-4 w-4" />
-                <span>Study Mode</span>
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm"
+                      onClick={openStudyMode}
+                    >
+                      <Brain className="h-4 w-4" />
+                      <span className={isMobile ? "sr-only" : "inline"}>Study Mode</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Study this Note</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                <span className={isMobile ? "hidden" : "inline"}>
-                  {isSaving ? "Saving..." : "Save"}
-                </span>
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2 rounded-full"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      <span className={isMobile ? "sr-only" : "inline"}>
+                        {isSaving ? "Saving..." : "Save"}
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Save Note</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           
@@ -271,7 +325,7 @@ const NotePage = () => {
       
       {/* Mobile sidebar */}
       {isMobile && (
-        <Sidebar className="hidden" />
+        <Sidebar className={showSidebar ? "block fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg animate-in slide-in-from-left-80" : "hidden"} />
       )}
     </div>
   );

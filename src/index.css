@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,6 +13,37 @@
   .hide-scrollbar {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Card hover effects - inspired by modern social apps */
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-1;
+  }
+
+  /* Button hover effects */
+  .btn-hover {
+    @apply transition-all duration-200 hover:scale-105;
+  }
+
+  /* Soft text gradients for headings */
+  .text-gradient {
+    @apply bg-gradient-to-r from-pen-primary to-pen-dark bg-clip-text text-transparent;
+  }
+
+  /* Tooltip animations */
+  .tooltip-enter {
+    animation: tooltipFadeIn 0.2s ease-out forwards;
+  }
+
+  @keyframes tooltipFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 
@@ -110,5 +142,22 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Modern button styles */
+  .btn-action {
+    @apply rounded-full shadow-sm bg-gradient-to-r from-pen-primary to-pen-dark 
+           text-white font-medium hover:shadow-md hover:opacity-90 transition-all duration-200;
+  }
+
+  /* Accent border style */
+  .border-accent {
+    @apply border-l-4 border-pen-primary pl-3;
+  }
+
+  /* Modern card style */
+  .card-modern {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 
+           dark:border-gray-700 p-4 hover:shadow-md transition-all duration-200;
   }
 }
