@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useNotebook } from "@/contexts/NotebookContext";
+import { useNotes } from "@/contexts/NotesContext";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DigitalCanvas from "@/components/canvas/DigitalCanvas";
@@ -13,18 +13,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
 import NoteSharing from "@/components/notes/NoteSharing";
-
-// Define interface for ScannedNoteView props to satisfy TypeScript
-interface ScannedNoteViewProps {
-  className?: string;
-  note: any;
-  readOnly?: boolean;
-}
-
-// Define interface for StudyModeView props
-interface StudyModeViewProps {
-  note: any;
-}
+import { StudyModeViewProps } from "@/components/study/StudyModeViewType";
 
 const NotePage = () => {
   const { noteId } = useParams<{ noteId: string }>();
@@ -32,18 +21,16 @@ const NotePage = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
-  // Get notebook context
-  const notebook = useNotebook();
-  const {
-    getCurrentNote,
+  // Use the NotesContext instead of NotebookContext
+  const { 
+    currentNote,
     fetchNote,
     saveNote,
     isNoteSaving,
     isNoteLoading,
     isNoteError,
-  } = notebook;
-  
-  const currentNote = notebook.currentNote;
+    getCurrentNote
+  } = useNotes();
   
   const [isStudyMode, setIsStudyMode] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -229,7 +216,8 @@ const NotePage = () => {
               ) : (
                 <ScannedNoteView
                   className="flex-1"
-                  note={currentNote}
+                  imageData={currentNote.content?.imageData}
+                  pageId={currentNote.id}
                   readOnly={false}
                 />
               )

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, MutableRefObject } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import PenDataInterpreter, { PenStroke } from '@/services/PenDataInterpreter';
@@ -6,20 +5,22 @@ import { useNotebook } from '@/contexts/NotebookContext';
 
 interface UseCanvasDrawingProps {
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
+  readOnly?: boolean;
+  initialStrokes?: PenStroke[];
 }
 
-const useCanvasDrawing = ({ canvasRef }: UseCanvasDrawingProps) => {
+const useCanvasDrawing = ({ canvasRef, readOnly = false, initialStrokes = [] }: UseCanvasDrawingProps) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [tool, setTool] = useState<"pen" | "finger" | "eraser" | "hand">("pen");
   const [color, setColor] = useState("#000000");
   const [lineWidth, setLineWidth] = useState(2);
   const [scale, setScale] = useState(1);
+  const [strokes, setStrokes] = useState<PenStroke[]>(initialStrokes);
   const [redoStack, setRedoStack] = useState<PenStroke[]>([]);
   const { toast } = useToast();
   
   const { 
-    strokes, 
     addStroke, 
     updateStrokes, 
     goToNextPage, 
@@ -57,16 +58,27 @@ const useCanvasDrawing = ({ canvasRef }: UseCanvasDrawingProps) => {
     redrawCanvas();
     
     // Set up pen data interpreter handlers
-    PenDataInterpreter.setOnNewStroke((stroke) => {
-      addStroke(stroke);
-      drawStroke(stroke);
-    });
+    if (!readOnly) {
+      PenDataInterpreter.setOnNewStroke((stroke) => {
+        addStroke(stroke);
+        drawStroke(stroke);
+      });
+    }
     
     return () => {
       window.removeEventListener("resize", resizeCanvas);
-      PenDataInterpreter.setOnNewStroke(null);
+      if (!readOnly) {
+        PenDataInterpreter.setOnNewStroke(null);
+      }
     };
-  }, [addStroke]);
+  }, [addStroke, readOnly]);
+  
+  // Use initial strokes if provided
+  useEffect(() => {
+    if (initialStrokes?.length > 0) {
+      setStrokes(initialStrokes);
+    }
+  }, [initialStrokes]);
   
   // Redraw when strokes change
   useEffect(() => {
@@ -75,9 +87,11 @@ const useCanvasDrawing = ({ canvasRef }: UseCanvasDrawingProps) => {
   
   // Redraw canvas when page changes
   useEffect(() => {
-    redrawCanvas();
-    setRedoStack([]);
-  }, [currentPage]);
+    if (!readOnly) {
+      redrawCanvas();
+      setRedoStack([]);
+    }
+  }, [currentPage, readOnly]);
   
   // Redraw all strokes
   const redrawCanvas = () => {
@@ -102,7 +116,8 @@ const useCanvasDrawing = ({ canvasRef }: UseCanvasDrawingProps) => {
     }
     
     // Draw all strokes
-    strokes.forEach(stroke => {
+    const strokesToDraw = readOnly && initialStrokes?.length > 0 ? initialStrokes : strokes;
+    strokesToDraw.forEach(stroke => {
       drawStroke(stroke);
     });
   };
@@ -269,9 +284,14 @@ const useCanvasDrawing = ({ canvasRef }: UseCanvasDrawingProps) => {
     
     const lastStroke = strokes[strokes.length - 1];
     const newStrokes = strokes.slice(0, -1);
-    updateStrokes(newStrokes);
-    setRedoStack(prev => [...prev, lastStroke]);
     
+    if (!readOnly) {
+      updateStrokes(newStrokes);
+    } else {
+      setStrokes(newStrokes);
+    }
+    
+    setRedoStack(prev => [...prev, lastStroke]);
     redrawCanvas();
   };
   
@@ -281,7 +301,12 @@ const useCanvasDrawing = ({ canvasRef }: UseCanvasDrawingProps) => {
     
     const strokeToRedo = redoStack[redoStack.length - 1];
     setRedoStack(prev => prev.slice(0, -1));
-    updateStrokes([...strokes, strokeToRedo]);
+    
+    if (!readOnly) {
+      updateStrokes([...strokes, strokeToRedo]);
+    } else {
+      setStrokes([...strokes, strokeToRedo]);
+    }
     
     redrawCanvas();
   };
@@ -309,7 +334,12 @@ const useCanvasDrawing = ({ canvasRef }: UseCanvasDrawingProps) => {
   const handleClear = () => {
     if (!canvasRef.current) return;
     
-    clearStrokes();
+    if (!readOnly) {
+      clearStrokes();
+    } else {
+      setStrokes([]);
+    }
+    
     redrawCanvas();
     
     toast({

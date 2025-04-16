@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import WelcomeTutorial from '@/components/onboarding/WelcomeTutorial';
 
 const OnboardingPage = () => {
-  const { user, updateUserProfile } = useAuth();
+  const { user, updateProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -35,8 +35,8 @@ const OnboardingPage = () => {
     try {
       setIsSubmitting(true);
       
-      // Update user profile in Supabase
-      await updateUserProfile({
+      // Use the correct method from AuthContext
+      await updateProfile({
         first_name: firstName,
         last_name: lastName,
       });

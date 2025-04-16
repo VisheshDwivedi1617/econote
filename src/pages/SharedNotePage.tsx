@@ -9,13 +9,6 @@ import { ArrowLeft, User, Shield, CalendarDays, Loader2, Lock } from "lucide-rea
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
-// Define types for the ScannedNoteView props to match component expectations
-interface ScannedNoteViewProps {
-  className?: string;
-  note: any;
-  readOnly?: boolean;
-}
-
 // This is a placeholder for the actual share API integration
 const mockGetSharedNote = async (id: string) => {
   // Simulate API call
@@ -27,7 +20,8 @@ const mockGetSharedNote = async (id: string) => {
     title: "Shared Note Example",
     content: {
       strokes: [],
-      text: "This is a sample shared note content."
+      text: "This is a sample shared note content.",
+      imageData: "https://via.placeholder.com/800x600?text=Shared+Note+Example"
     },
     owner: {
       name: "John Doe",
@@ -167,7 +161,8 @@ const SharedNotePage = () => {
         ) : (
           <ScannedNoteView
             className="flex-1"
-            note={note}
+            imageData={note.content?.imageData}
+            pageId={note.id}
             readOnly={!note.permissions.can_edit}
           />
         )}
