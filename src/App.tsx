@@ -26,6 +26,7 @@ const SignupPage = lazy(() => import("./pages/SignupPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const SharedNotePage = lazy(() => import("./pages/SharedNotePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,6 +76,7 @@ const App = () => (
                   <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
                   <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
                   <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+                  <Route path="/shared-note/:noteId" element={<PublicRoute><SharedNotePage /></PublicRoute>} />
                   
                   {/* Protected routes */}
                   <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />

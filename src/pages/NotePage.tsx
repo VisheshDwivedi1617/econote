@@ -12,316 +12,214 @@ import { ArrowLeft, Save, Loader2, Brain, PanelLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
-import analyticsService, { EventCategory, FeatureAction } from "@/services/AnalyticsService";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import NoteSharing from "@/components/notes/NoteSharing";
 
 const NotePage = () => {
   const { noteId } = useParams<{ noteId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { currentPage, switchPage, updatePage } = useNotebook();
-  const [pageTitle, setPageTitle] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [showStudyMode, setShowStudyMode] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
   const isMobile = useIsMobile();
   
-  // Load the note when the component mounts or noteId changes
+  const {
+    currentNote,
+    fetchNote,
+    saveNote,
+    isNoteSaving,
+    isNoteLoading,
+    isNoteError,
+  } = useNotebook();
+  
+  const [isStudyMode, setIsStudyMode] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+  
   useEffect(() => {
-    // Track page view
     if (noteId) {
-      analyticsService.trackPageView(`/note/${noteId}`, 'Note View');
+      fetchNote(noteId);
     }
-    
-    const loadNoteData = async () => {
-      if (!noteId) {
-        navigate("/notes");
-        return;
-      }
-      
-      try {
-        const startTime = performance.now();
-        setLoading(true);
-        await switchPage(noteId);
-        
-        // Track loading performance
-        const loadTime = performance.now() - startTime;
-        analyticsService.trackPerformance('note_load_time', loadTime, {
-          note_id: noteId
-        });
-      } catch (error) {
-        console.error("Error loading note:", error);
-        
-        // Track error
-        analyticsService.trackError(
-          error instanceof Error ? error.message : 'Unknown error loading note',
-          'note_loading'
-        );
-        
-        toast({
-          title: "Error",
-          description: "Failed to load the note",
-          variant: "destructive",
-        });
-        navigate("/notes");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadNoteData();
-  }, [noteId, navigate, switchPage, toast]);
-  
-  // Update local title state when currentPage changes
-  useEffect(() => {
-    if (currentPage) {
-      setPageTitle(currentPage.title);
-    }
-  }, [currentPage]);
-  
-  const handleTitleChange = (newTitle: string) => {
-    setPageTitle(newTitle);
-  };
+  }, [noteId, fetchNote]);
   
   const handleSave = async () => {
-    if (!currentPage) return;
-    
-    if (isSaving) return;
-    setIsSaving(true);
+    if (!currentNote) return;
     
     try {
-      // Update the title if it has changed
-      if (currentPage.title !== pageTitle) {
-        const startTime = performance.now();
-        
-        const updatedPage = {
-          ...currentPage,
-          title: pageTitle,
-          updatedAt: Date.now()
-        };
-        
-        await updatePage(updatedPage);
-        
-        // Track save performance and event
-        const saveTime = performance.now() - startTime;
-        analyticsService.trackPerformance('note_save_time', saveTime);
-        analyticsService.trackFeatureUsage('note', FeatureAction.EDIT, {
-          changed_title: true
-        });
-        
-        toast({
-          title: "Saved",
-          description: "Note has been saved successfully",
-        });
-      }
+      await saveNote(currentNote);
+      toast({
+        title: "Note saved",
+        description: "Your note has been saved successfully",
+      });
     } catch (error) {
-      console.error("Error saving note:", error);
-      
-      // Track error
-      analyticsService.trackError(
-        error instanceof Error ? error.message : 'Unknown error saving note',
-        'note_saving'
-      );
-      
       toast({
-        title: "Error",
-        description: "Failed to save the note",
+        title: "Error saving note",
+        description: "Failed to save your note. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsSaving(false);
     }
   };
   
-  const openStudyMode = () => {
-    if (!currentPage) return;
+  const toggleStudyMode = () => {
+    setIsStudyMode(!isStudyMode);
     
-    // Only allow study mode for notes with content
-    if (currentPage.isScanned && !currentPage.ocrText) {
-      toast({
-        title: "OCR Required",
-        description: "Please wait for OCR processing to complete before using Study Mode",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!currentPage.isScanned && (!currentPage.strokes || currentPage.strokes.length === 0)) {
-      toast({
-        title: "No Content",
-        description: "Add content to this note before using Study Mode",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Track study mode usage
-    analyticsService.trackFeatureUsage('study_mode', FeatureAction.VIEW, {
-      note_id: currentPage.id,
-      is_scanned: currentPage.isScanned || false
+    toast({
+      title: isStudyMode ? "Exiting Study Mode" : "Entering Study Mode",
+      description: isStudyMode 
+        ? "Returning to regular note editing" 
+        : "Converting your notes to study materials",
     });
-    
-    setShowStudyMode(true);
   };
   
-  // Determine if this is a scanned note (has imageData)
-  const isScannedNote = currentPage?.isScanned && currentPage?.imageData;
+  const toggleSidebar = () => {
+    setShowSidebar(!showSidebar);
+  };
   
-  return (
-    <div className="flex flex-col h-screen">
-      <Navbar />
-      <div className="flex flex-1 overflow-hidden">
-        {!isMobile && <Sidebar />}
-        <div className="flex-1 flex flex-col">
-          <div className="flex flex-wrap items-center justify-between p-2 sm:p-4 border-b bg-white dark:bg-gray-800 shadow-sm">
-            <div className="flex items-center gap-2 w-full sm:w-auto mb-2 sm:mb-0">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => navigate("/notes")}
-                      className="rounded-full"
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Back to Notes</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <input
-                type="text"
-                value={pageTitle}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                className="text-lg sm:text-xl font-semibold bg-transparent border-none focus:outline-none focus:ring-0 w-full sm:w-auto"
-                placeholder="Untitled Note"
-              />
-              
-              {isMobile && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowSidebar(!showSidebar)}
-                        className="ml-auto rounded-full"
-                      >
-                        <PanelLeft className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Toggle Sidebar</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-sm"
-                      onClick={openStudyMode}
-                    >
-                      <Brain className="h-4 w-4" />
-                      <span className={isMobile ? "sr-only" : "inline"}>Study Mode</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Study this Note</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2 rounded-full"
-                      onClick={handleSave}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      <span className={isMobile ? "sr-only" : "inline"}>
-                        {isSaving ? "Saving..." : "Save"}
-                      </span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Save Note</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+  if (isNoteLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-pen-primary" />
+            <p className="mt-4 text-muted-foreground">Loading note...</p>
           </div>
-          
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-                <p>Loading note...</p>
-              </div>
-            </div>
-          ) : (
-            <ErrorBoundary>
-              <div className="flex-1 overflow-auto">
-                {isScannedNote ? (
-                  // Display scanned note image with OCR capabilities
-                  <div className="p-2 sm:p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
-                    <ScannedNoteView 
-                      imageData={currentPage.imageData!} 
-                      pageId={currentPage.id}
-                      className="max-w-3xl mx-auto" 
-                    />
-                  </div>
-                ) : (
-                  // Display digital canvas for regular notes
-                  <DigitalCanvas />
-                )}
-              </div>
-            </ErrorBoundary>
-          )}
         </div>
       </div>
+    );
+  }
+  
+  if (isNoteError || !currentNote) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center max-w-md text-center p-6">
+            <div className="bg-red-100 dark:bg-red-900/20 p-3 rounded-full mb-4">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-6 w-6 text-red-600 dark:text-red-400" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+                />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold mb-2">Note Not Found</h2>
+            <p className="text-muted-foreground mb-4">
+              The note you're looking for could not be found or might have been deleted.
+            </p>
+            <Button onClick={() => navigate('/notes')}>
+              Go to My Notes
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <Navbar />
       
-      {/* Study Mode Dialog */}
-      {currentPage && noteId && (
-        <StudyModeView
-          noteId={noteId}
-          open={showStudyMode}
-          onOpenChange={(open) => {
-            setShowStudyMode(open);
-            if (!open && currentPage) {
-              // Track study mode exit
-              analyticsService.trackFeatureUsage('study_mode', FeatureAction.VIEW, {
-                note_id: currentPage.id,
-                session_ended: true
-              });
-            }
-          }}
-        />
-      )}
+      <header className="border-b bg-background p-2 sm:px-4 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleSidebar}
+            >
+              <PanelLeft className="h-4 w-4" />
+            </Button>
+          )}
+          
+          <div>
+            <h1 className="text-lg font-semibold line-clamp-1">
+              {currentNote.title}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Last updated: {new Date(currentNote.updated_at).toLocaleString()}
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <NoteSharing noteId={currentNote.id} noteTitle={currentNote.title} />
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleStudyMode}
+            className="gap-1.5"
+          >
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">{isStudyMode ? "Exit Study Mode" : "Study Mode"}</span>
+          </Button>
+          
+          <Button 
+            onClick={handleSave}
+            disabled={isNoteSaving}
+            size="sm"
+            className="gap-1.5"
+          >
+            {isNoteSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="hidden sm:inline">Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                <span className="hidden sm:inline">Save</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </header>
+      
+      <div className="flex flex-1 overflow-hidden">
+        {!isMobile && <Sidebar />}
+        
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <ErrorBoundary>
+            {isStudyMode ? (
+              <StudyModeView note={currentNote} />
+            ) : (
+              currentNote.type === 'digital' ? (
+                <DigitalCanvas 
+                  className="flex-1" 
+                  readOnly={false}
+                  initialStrokes={currentNote.content?.strokes || []}
+                  onStrokesChange={(strokes) => {
+                    if (currentNote) {
+                      currentNote.content = {
+                        ...(currentNote.content || {}),
+                        strokes
+                      };
+                    }
+                  }}
+                />
+              ) : (
+                <ScannedNoteView
+                  className="flex-1"
+                  note={currentNote}
+                />
+              )
+            )}
+          </ErrorBoundary>
+        </main>
+      </div>
       
       {/* Mobile sidebar */}
       {isMobile && showSidebar && (
