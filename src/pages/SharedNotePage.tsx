@@ -9,6 +9,13 @@ import { ArrowLeft, User, Shield, CalendarDays, Loader2, Lock } from "lucide-rea
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
+// Define types for the ScannedNoteView props to match component expectations
+interface ScannedNoteViewProps {
+  className?: string;
+  note: any;
+  readOnly?: boolean;
+}
+
 // This is a placeholder for the actual share API integration
 const mockGetSharedNote = async (id: string) => {
   // Simulate API call

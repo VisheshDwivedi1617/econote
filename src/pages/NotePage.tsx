@@ -14,20 +14,36 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
 import NoteSharing from "@/components/notes/NoteSharing";
 
+// Define interface for ScannedNoteView props to satisfy TypeScript
+interface ScannedNoteViewProps {
+  className?: string;
+  note: any;
+  readOnly?: boolean;
+}
+
+// Define interface for StudyModeView props
+interface StudyModeViewProps {
+  note: any;
+}
+
 const NotePage = () => {
   const { noteId } = useParams<{ noteId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
+  // Get notebook context
+  const notebook = useNotebook();
   const {
-    currentNote,
+    getCurrentNote,
     fetchNote,
     saveNote,
     isNoteSaving,
     isNoteLoading,
     isNoteError,
-  } = useNotebook();
+  } = notebook;
+  
+  const currentNote = notebook.currentNote;
   
   const [isStudyMode, setIsStudyMode] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -214,6 +230,7 @@ const NotePage = () => {
                 <ScannedNoteView
                   className="flex-1"
                   note={currentNote}
+                  readOnly={false}
                 />
               )
             )}

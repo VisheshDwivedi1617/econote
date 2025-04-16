@@ -1,5 +1,5 @@
 
-import { Suspense, lazy } from "react";
+import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +16,7 @@ import { useAuth } from "./contexts/AuthContext";
 // that were causing issues with dynamic imports
 const Index = lazy(() => import("./pages/Index"));
 const Settings = lazy(() => import("./pages/Settings"));
-const NotePage = lazy(() => import("./pages/NotePage").then(module => ({ default: module.default })));
+const NotePage = lazy(() => import("./pages/NotePage"));
 const AllNotesPage = lazy(() => import("./pages/AllNotesPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -59,43 +59,45 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
-  <BrowserRouter>
+const App = () => {
+  return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <NotebookProvider>
-            <ThemeProvider>
-              <Toaster />
-              <Sonner />
-              <Suspense fallback={<LoadingFallback />}>
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/welcome" element={<PublicRoute><WelcomePage /></PublicRoute>} />
-                  <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-                  <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
-                  <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-                  <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
-                  <Route path="/shared-note/:noteId" element={<PublicRoute><SharedNotePage /></PublicRoute>} />
-                  
-                  {/* Protected routes */}
-                  <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                  <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                  <Route path="/note/:noteId" element={<ProtectedRoute><NotePage /></ProtectedRoute>} />
-                  <Route path="/notes" element={<ProtectedRoute><AllNotesPage /></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                  
-                  {/* Redirect from root to welcome if not authenticated */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </ThemeProvider>
-          </NotebookProvider>
-        </TooltipProvider>
+        <BrowserRouter>
+          <TooltipProvider>
+            <NotebookProvider>
+              <ThemeProvider>
+                <Toaster />
+                <Sonner />
+                <Suspense fallback={<LoadingFallback />}>
+                  <Routes>
+                    {/* Public routes */}
+                    <Route path="/welcome" element={<PublicRoute><WelcomePage /></PublicRoute>} />
+                    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+                    <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+                    <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+                    <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+                    <Route path="/shared-note/:noteId" element={<PublicRoute><SharedNotePage /></PublicRoute>} />
+                    
+                    {/* Protected routes */}
+                    <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                    <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                    <Route path="/note/:noteId" element={<ProtectedRoute><NotePage /></ProtectedRoute>} />
+                    <Route path="/notes" element={<ProtectedRoute><AllNotesPage /></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                    
+                    {/* Redirect from root to welcome if not authenticated */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </ThemeProvider>
+            </NotebookProvider>
+          </TooltipProvider>
+        </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
-  </BrowserRouter>
-);
+  );
+};
 
 export default App;
